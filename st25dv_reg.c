@@ -1,3 +1,22 @@
+/**
+  ******************************************************************************
+  * @file    st25dv_reg.c 
+  * @author  MMY-SRA Team
+  * @brief   This file provides set of driver functions to manage communication 
+  *          between BSP and ST25DV chip.
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2021 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
+  */ 
+
 #include "st25dv_reg.h"
 
 int32_t ST25DV_ReadReg (ST25DV_Ctx_t *ctx, uint16_t Reg, uint8_t* Data, uint16_t len)
