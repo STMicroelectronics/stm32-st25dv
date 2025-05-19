@@ -2,18 +2,29 @@
   ******************************************************************************
   * @file    st25dv.c 
   * @author  MMY Application Team
+  * @version $Revision: 3308 $
+  * @date    $Date: 2017-01-13 11:19:33 +0100 (Fri, 13 Jan 2017) $
   * @brief   This file provides set of driver functions to manage communication 
   *          between BSP and ST25DV chip.
   ******************************************************************************
- * @attention
+  * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2016 STMicroelectronics.
-  * All rights reserved.</center></h2>
+  * <h2><center>&copy; COPYRIGHT 2016 STMicroelectronics</center></h2>
   *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
+  * Licensed under ST MYLIBERTY SOFTWARE LICENSE AGREEMENT (the "License");
+  * You may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at:
+  *
+  *        http://www.st.com/myliberty  
+  *
+  * Unless required by applicable law or agreed to in writing, software 
+  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied,
+  * AND SPECIFICALLY DISCLAIMING THE IMPLIED WARRANTIES OF MERCHANTABILITY,
+  * FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  *
   ******************************************************************************
   */ 
 
@@ -37,134 +48,237 @@
 /* External variables --------------------------------------------------------*/
 /* Private typedef -----------------------------------------------------------*/
 /* Private defines -----------------------------------------------------------*/
+/** @brief This component driver only supports 1 instance of the component */
+#define ST25DV_MAX_INSTANCE         1
 
   
 /* Private macros ------------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
-static int32_t ReadRegWrap(void *Handle, uint16_t Reg, uint8_t *pData, uint16_t Length);
-static int32_t WriteRegWrap(void *Handle, uint16_t Reg, const uint8_t *pData, uint16_t Length);
-static int32_t ST25DV_Init( ST25DV_Object_t* );
-static int32_t ST25DV_ReadID(ST25DV_Object_t* pObj,  uint8_t * const pICRef );
-static int32_t ST25DV_IsDeviceReady(ST25DV_Object_t* pObj,  const uint32_t Trials );
-static int32_t ST25DV_GetGPOStatus(ST25DV_Object_t* pObj,  uint16_t * const pGPOStatus );
-static int32_t ST25DV_ConfigureGPO(ST25DV_Object_t* pObj,  const uint16_t ITConf );
-static int32_t ST25DV_ReadData(ST25DV_Object_t* pObj,  uint8_t * const pData, const uint16_t TarAddr, const uint16_t NbByte );
-static int32_t ST25DV_WriteData(ST25DV_Object_t* pObj,  const uint8_t * const pData, const uint16_t TarAddr, const uint16_t NbByte );
+NFCTAG_StatusTypeDef ST25DV_i2c_Init( void );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadID( uint8_t * const pICRef );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadICRev( uint8_t * const pICRev );
+NFCTAG_StatusTypeDef ST25DV_i2c_IsDeviceReady( const uint32_t Trials );
+NFCTAG_StatusTypeDef ST25DV_i2c_GetGPOStatus( uint16_t * const pGPOStatus );
+NFCTAG_StatusTypeDef ST25DV_i2c_ConfigureGPO( const uint16_t ITConf );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadITPulse( ST25DV_PULSE_DURATION * const pITtime );
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteITPulse( const ST25DV_PULSE_DURATION ITtime );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadData( uint8_t * const pData, const uint16_t TarAddr, const uint16_t NbByte );
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteData( const uint8_t * const pData, const uint16_t TarAddr, const uint16_t NbByte );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadDataCurrentAddr( uint8_t * const pData, const uint16_t NbByte );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadRegister( uint8_t * const pData, const uint16_t TarAddr, const uint16_t NbByte );
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteRegister( const uint8_t * const pData, const uint16_t TarAddr, const uint16_t NbByte );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadUID( ST25DV_UID * const pUid );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadDSFID( uint8_t * const pDsfid );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadDsfidRFProtection( ST25DV_LOCK_STATUS * const pLockDsfid );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadAFI( uint8_t * const pAfi );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadAfiRFProtection( ST25DV_LOCK_STATUS * const pLockAfi );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadI2CProtectZone( ST25DV_I2C_PROT_ZONE * const pProtZone );
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteI2CProtectZonex( const ST25DV_PROTECTION_ZONE Zone, const ST25DV_PROTECTION_CONF ReadWriteProtection );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadLockCCFile( ST25DV_LOCK_CCFILE * const pLockCCFile );
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteLockCCFile( const ST25DV_CCFILE_BLOCK NbBlockCCFile, const ST25DV_LOCK_STATUS LockCCFile );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadLockCFG( ST25DV_LOCK_STATUS * const pLockCfg );
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteLockCFG( const ST25DV_LOCK_STATUS LockCfg );
+NFCTAG_StatusTypeDef ST25DV_i2c_PresentI2CPassword( const ST25DV_PASSWD PassWord );
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteI2CPassword( const ST25DV_PASSWD PassWord );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadRFZxSS( const ST25DV_PROTECTION_ZONE Zone, ST25DV_RF_PROT_ZONE * const pRfprotZone );
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteRFZxSS( const ST25DV_PROTECTION_ZONE Zone, const ST25DV_RF_PROT_ZONE RfProtZone );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadEndZonex( const ST25DV_END_ZONE EndZone, uint8_t * const pEndZ );
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteEndZonex( const ST25DV_END_ZONE EndZone, const uint8_t EndZ );
+NFCTAG_StatusTypeDef ST25DV_i2c_InitEndZone( void );
+NFCTAG_StatusTypeDef ST25DV_i2c_CreateUserZone( uint16_t Zone1Length, uint16_t Zone2Length, uint16_t Zone3Length, uint16_t Zone4Length );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadMemSize( ST25DV_MEM_SIZE * const pSizeInfo );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadEHMode( ST25DV_EH_MODE_STATUS * const pEH_mode );
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteEHMode( const ST25DV_EH_MODE_STATUS EH_mode );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadRFMngt( ST25DV_RF_MNGT * const pRF_Mngt );
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteRFMngt( const uint8_t Rfmngt );
+NFCTAG_StatusTypeDef ST25DV_i2c_GetRFDisable( ST25DV_EN_STATUS * const pRFDisable );
+NFCTAG_StatusTypeDef ST25DV_i2c_SetRFDisable( void );
+NFCTAG_StatusTypeDef ST25DV_i2c_ResetRFDisable( void );
+NFCTAG_StatusTypeDef ST25DV_i2c_GetRFSleep( ST25DV_EN_STATUS * const pRFSleep );
+NFCTAG_StatusTypeDef ST25DV_i2c_SetRFSleep( void );
+NFCTAG_StatusTypeDef ST25DV_i2c_ResetRFSleep( void );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadMBMode( ST25DV_EN_STATUS * const pMB_mode );
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteMBMode( const ST25DV_EN_STATUS MB_mode );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadMBWDG( uint8_t * const pWdgDelay );
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteMBWDG( const uint8_t WdgDelay );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadMailboxData( uint8_t * const pData, const uint16_t TarAddr, const uint16_t NbByte );
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteMailboxData( const uint8_t * const pData, const uint16_t NbByte );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadMailboxRegister( uint8_t * const pData, const uint16_t TarAddr, const uint16_t NbByte );
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteMailboxRegister( const uint8_t * const pData, const uint16_t TarAddr, const uint16_t NbByte );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadI2CSecuritySession_Dyn( ST25DV_I2CSSO_STATUS * const pSession );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadITSTStatus_Dyn( uint8_t * const pITStatus );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadGPO_Dyn( uint8_t *GPOConfig );
+NFCTAG_StatusTypeDef ST25DV_i2c_GetGPO_en_Dyn( ST25DV_EN_STATUS * const pGPO_en );
+NFCTAG_StatusTypeDef ST25DV_i2c_SetGPO_en_Dyn( void );
+NFCTAG_StatusTypeDef ST25DV_i2c_ResetGPO_en_Dyn( void );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadEHCtrl_Dyn( ST25DV_EH_CTRL * const pEH_CTRL );
+NFCTAG_StatusTypeDef ST25DV_i2c_GetEHENMode_Dyn( ST25DV_EN_STATUS * const pEH_Val );
+NFCTAG_StatusTypeDef ST25DV_i2c_SetEHENMode_Dyn( void );
+NFCTAG_StatusTypeDef ST25DV_i2c_ResetEHENMode_Dyn( void );
+NFCTAG_StatusTypeDef ST25DV_i2c_GetEHON_Dyn( ST25DV_EN_STATUS * const pEHON );
+NFCTAG_StatusTypeDef ST25DV_i2c_GetRFField_Dyn( ST25DV_FIELD_STATUS * const pRF_Field );
+NFCTAG_StatusTypeDef ST25DV_i2c_GetVCC_Dyn( ST25DV_VCC_STATUS * const pVCC );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadRFMngt_Dyn( ST25DV_RF_MNGT * const pRF_Mngt );
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteRFMngt_Dyn( const uint8_t RF_Mngt );
+NFCTAG_StatusTypeDef ST25DV_i2c_GetRFDisable_Dyn( ST25DV_EN_STATUS * const pRFDisable );
+NFCTAG_StatusTypeDef ST25DV_i2c_SetRFDisable_Dyn( void );
+NFCTAG_StatusTypeDef ST25DV_i2c_ResetRFDisable_Dyn( void );
+NFCTAG_StatusTypeDef ST25DV_i2c_GetRFSleep_Dyn( ST25DV_EN_STATUS * const pRFSleep );
+NFCTAG_StatusTypeDef ST25DV_i2c_SetRFSleep_Dyn( void );
+NFCTAG_StatusTypeDef ST25DV_i2c_ResetRFSleep_Dyn( void );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadMBCtrl_Dyn( ST25DV_MB_CTRL_DYN_STATUS * const pCtrlStatus );
+NFCTAG_StatusTypeDef ST25DV_i2c_GetMBEN_Dyn( ST25DV_EN_STATUS * const pMBEN );
+NFCTAG_StatusTypeDef ST25DV_i2c_SetMBEN_Dyn( void );
+NFCTAG_StatusTypeDef ST25DV_i2c_ResetMBEN_Dyn( void );
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadMBLength_Dyn( uint8_t * const pMBLength );
 
 /* Global variables ---------------------------------------------------------*/
 /**
   * @brief    Standard NFC tag driver API for the ST25DV.
   * @details  Provides a generic way to access the ST25DV implementation of the NFC tag standard driver functions. 
   */
-ST25DV_Drv_t St25Dv_Drv =
+NFCTAG_DrvTypeDef St25Dv_i2c_Drv =
 {
-  ST25DV_Init,
-  ST25DV_ReadID,
-  ST25DV_IsDeviceReady,
-  ST25DV_GetGPOStatus,
-  ST25DV_ConfigureGPO,
-  ST25DV_ReadData,
-  ST25DV_WriteData,
+  ST25DV_i2c_Init,
+  ST25DV_i2c_ReadID,
+  ST25DV_i2c_IsDeviceReady,
+  ST25DV_i2c_GetGPOStatus,
+  ST25DV_i2c_ConfigureGPO,
+  ST25DV_i2c_ReadData,
+  ST25DV_i2c_WriteData,
+  ST25DV_i2c_ReadRegister,
+  ST25DV_i2c_WriteRegister,
+  NULL
 };
+
+/**
+  * @brief    Extended NFC tag driver API for the ST25DV.
+  * @details  Provides a generic way to access the ST25DV extended driver functions. 
+  */
+NFCTAG_ExtDrvTypeDef St25Dv_i2c_ExtDrv =
+{
+  ST25DV_i2c_ReadICRev,
+  ST25DV_i2c_WriteITPulse,
+  ST25DV_i2c_ReadITPulse,
+  ST25DV_i2c_ReadDataCurrentAddr,
+  ST25DV_i2c_ReadUID,
+  ST25DV_i2c_ReadDSFID,
+  ST25DV_i2c_ReadDsfidRFProtection,
+  ST25DV_i2c_ReadAFI,
+  ST25DV_i2c_ReadAfiRFProtection,
+  ST25DV_i2c_ReadI2CProtectZone,
+  ST25DV_i2c_WriteI2CProtectZonex,
+  ST25DV_i2c_ReadLockCCFile,
+  ST25DV_i2c_WriteLockCCFile,
+  ST25DV_i2c_ReadLockCFG,
+  ST25DV_i2c_WriteLockCFG,
+  ST25DV_i2c_PresentI2CPassword,
+  ST25DV_i2c_WriteI2CPassword,
+  ST25DV_i2c_ReadRFZxSS,
+  ST25DV_i2c_WriteRFZxSS,
+  ST25DV_i2c_ReadEndZonex,
+  ST25DV_i2c_WriteEndZonex,
+  ST25DV_i2c_InitEndZone,
+  ST25DV_i2c_CreateUserZone,
+  ST25DV_i2c_ReadMemSize,
+  ST25DV_i2c_ReadEHMode,
+  ST25DV_i2c_WriteEHMode,
+  ST25DV_i2c_ReadRFMngt,
+  ST25DV_i2c_WriteRFMngt,
+  ST25DV_i2c_GetRFDisable,
+  ST25DV_i2c_SetRFDisable,
+  ST25DV_i2c_ResetRFDisable,
+  ST25DV_i2c_GetRFSleep,
+  ST25DV_i2c_SetRFSleep,
+  ST25DV_i2c_ResetRFSleep,
+  ST25DV_i2c_ReadMBMode,
+  ST25DV_i2c_WriteMBMode,
+  ST25DV_i2c_ReadMBWDG,
+  ST25DV_i2c_WriteMBWDG,
+  ST25DV_i2c_ReadMailboxData,
+  ST25DV_i2c_WriteMailboxData,
+  ST25DV_i2c_ReadMailboxRegister,
+  ST25DV_i2c_WriteMailboxRegister,
+  ST25DV_i2c_ReadI2CSecuritySession_Dyn,
+  ST25DV_i2c_ReadITSTStatus_Dyn,
+  ST25DV_i2c_ReadGPO_Dyn,
+  ST25DV_i2c_GetGPO_en_Dyn,
+  ST25DV_i2c_SetGPO_en_Dyn,
+  ST25DV_i2c_ResetGPO_en_Dyn,
+  ST25DV_i2c_ReadEHCtrl_Dyn,
+  ST25DV_i2c_GetEHENMode_Dyn,
+  ST25DV_i2c_SetEHENMode_Dyn,
+  ST25DV_i2c_ResetEHENMode_Dyn,
+  ST25DV_i2c_GetEHON_Dyn,
+  ST25DV_i2c_GetRFField_Dyn,
+  ST25DV_i2c_GetVCC_Dyn,
+  ST25DV_i2c_ReadRFMngt_Dyn,
+  ST25DV_i2c_WriteRFMngt_Dyn,
+  ST25DV_i2c_GetRFDisable_Dyn,
+  ST25DV_i2c_SetRFDisable_Dyn,
+  ST25DV_i2c_ResetRFDisable_Dyn,
+  ST25DV_i2c_GetRFSleep_Dyn,
+  ST25DV_i2c_SetRFSleep_Dyn,
+  ST25DV_i2c_ResetRFSleep_Dyn,
+  ST25DV_i2c_ReadMBCtrl_Dyn,
+  ST25DV_i2c_GetMBEN_Dyn,
+  ST25DV_i2c_SetMBEN_Dyn,
+  ST25DV_i2c_ResetMBEN_Dyn,
+  ST25DV_i2c_ReadMBLength_Dyn
+};
+
+/** @brief ST25DV instances by address. */
+uint8_t aSt25Dv[ST25DV_MAX_INSTANCE] = {0};
 
 
 /* Public functions ---------------------------------------------------------*/
-
-/**
- * @brief  Register Component Bus IO operations
- * @param  pObj the device pObj
- * @retval 0 in case of success, an error code otherwise
- */
-int32_t ST25DV_RegisterBusIO (ST25DV_Object_t* pObj, ST25DV_IO_t *pIO)
-{
-  int32_t ret = ST25DV_OK;
-
-  if (pObj == NULL)
-  {
-    ret = ST25DV_ERROR;
-  }
-  else
-  {
-    pObj->IO.Init        = pIO->Init;
-    pObj->IO.DeInit      = pIO->DeInit;
-    pObj->IO.Write       = pIO->Write;
-    pObj->IO.Read        = pIO->Read;
-    pObj->IO.IsReady     = pIO->IsReady;
-    pObj->IO.GetTick     = pIO->GetTick;
-
-    pObj->Ctx.ReadReg  = ReadRegWrap;
-    pObj->Ctx.WriteReg = WriteRegWrap;
-    pObj->Ctx.handle   = pObj;
-
-    if (pObj->IO.Init == NULL)
-    {
-      ret = ST25DV_ERROR;
-    }
-    else
-    {
-      if (pObj->IO.Init() != 0)
-      {
-        ret = ST25DV_ERROR;
-      }
-    }
-  }
-
-  return ret;
-}
-
 /**
   * @brief  ST25DV nfctag Initialization.
-  * @param  pObj the device pObj
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-static int32_t ST25DV_Init( ST25DV_Object_t *pObj )
+NFCTAG_StatusTypeDef ST25DV_i2c_Init( void )
 {
-  int32_t status = ST25DV_OK;
-  if (pObj->IsInitialized == 0U)
-  {
-    uint8_t nfctag_id;
-    ST25DV_ReadID(pObj,&nfctag_id);
-    if( (nfctag_id != I_AM_ST25DV04) && (nfctag_id != I_AM_ST25DV64) )
-    {
-      status = ST25DV_ERROR;
-    } else {
-      pObj->IsInitialized = 1U;
-    }
-  }
-
-  return status;
+  /* Configure the low level interface */
+  return ST25DV_IO_Init( );
 }
-
 
 /**
   * @brief  Reads the ST25DV ID.
-  * @param  pObj the device pObj
   * @param  pICRef Pointeron a uint8_t used to return the ST25DV ID.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-static int32_t ST25DV_ReadID(ST25DV_Object_t* pObj, uint8_t * const pICRef )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadID( uint8_t * const pICRef )
 {
   /* Read ICRef on device */
-  return st25dv_get_icref(&(pObj->Ctx), pICRef);
+  return ST25DV_i2c_ReadRegister( pICRef, ST25DV_ICREF_REG, 1 );
+}
+
+/**
+  * @brief  Reads the ST25DV IC Revision.
+  * @param  pICRev Pointer on the uint8_t used to return the ST25DV IC Revision number.
+  * @return NFCTAG_StatusTypeDef enum status.
+  */
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadICRev( uint8_t * const pICRev )
+{
+  /* Read ICRev on device */
+  return ST25DV_i2c_ReadRegister( pICRev, ST25DV_ICREV_REG, 1 );
 }
 
 /**
   * @brief    Checks the ST25DV availability.
-  * @param pObj the device pObj
   * @details  The ST25DV I2C is NACKed when a RF communication is on-going.
   *           This function determines if the ST25DV is ready to answer an I2C request. 
   * @param    Trials Max number of tentative.
-  * @retval   Component error status.
+  * @retval   NFCTAG_StatusTypeDef enum status.
   */
-static int32_t ST25DV_IsDeviceReady(ST25DV_Object_t* pObj,  const uint32_t Trials )
+NFCTAG_StatusTypeDef ST25DV_i2c_IsDeviceReady( const uint32_t Trials )
 {
   /* Test communication with device */
-  return pObj->IO.IsReady(ST25DV_ADDR_DATA_I2C, Trials );
+  return ST25DV_IO_IsDeviceReady( ST25DV_ADDR_DATA_I2C, Trials );
 }
 
 /**
   * @brief  Reads the ST25DV GPO configuration.
-  * @param  pObj the device pObj
   * @param  pGPOStatus  Pointer on a uint16_t used to return the current GPO consiguration, as:
   *                     - RFUSERSTATE = 0x01
   *                     - RFBUSY = 0x02
@@ -175,27 +289,27 @@ static int32_t ST25DV_IsDeviceReady(ST25DV_Object_t* pObj,  const uint32_t Trial
   *                     - RFGETMSG = 0x40
   *                     - RFWRITE = 0x80
   *
-  * @retval   Component error status.
+  * @retval   NFCTAG_StatusTypeDef enum status.
   */
-static int32_t ST25DV_GetGPOStatus(ST25DV_Object_t* pObj,  uint16_t * const pGPOStatus )
+NFCTAG_StatusTypeDef ST25DV_i2c_GetGPOStatus( uint16_t * const pGPOStatus )
 {
   uint8_t reg_value;
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   
   /* Read value of GPO register */
-  status = st25dv_get_gpo_all(&(pObj->Ctx),  &reg_value);
-  if( status == ST25DV_OK )
-  {
-    /* Extract GPO configuration */
-    *pGPOStatus = (uint16_t)reg_value;
-  }
-  return status;
+  status = ST25DV_i2c_ReadRegister( &reg_value, ST25DV_GPO_REG, 1 );
+  if( status != NFCTAG_OK )
+    return status;
+
+  /* Extract GPO configuration */
+  *pGPOStatus = (uint16_t)reg_value;
+  
+  return NFCTAG_OK;
 }
 
 /**
   * @brief    Configures the ST25DV GPO.
   * @details  Needs the I2C Password presentation to be effective.
-  * @param    pObj the device pObj
   * @param    ITConf Provides the GPO configuration to apply:
   *           - RFUSERSTATE = 0x01
   *           - RFBUSY = 0x02
@@ -206,39 +320,78 @@ static int32_t ST25DV_GetGPOStatus(ST25DV_Object_t* pObj,  uint16_t * const pGPO
   *           - RFGETMSG = 0x40
   *           - RFWRITE = 0x80
   *
-  * @retval   Component error status.
+  * @retval   NFCTAG_StatusTypeDef enum status.
   */
-static int32_t ST25DV_ConfigureGPO(ST25DV_Object_t* pObj,  const uint16_t ITConf )
+NFCTAG_StatusTypeDef ST25DV_i2c_ConfigureGPO( const uint16_t ITConf )
 {
   /* Write GPO configuration to register */
-  return st25dv_set_gpo_all( &(pObj->Ctx),  (uint8_t *)&ITConf);
+  return ST25DV_i2c_WriteRegister( (uint8_t *)&ITConf, ST25DV_GPO_REG, 1 );
+}
+
+
+/**
+  * @brief  Reads the ST25DV ITtime duration for the GPO pulses.
+  * @param  pITtime Pointer used to return the coefficient for the GPO Pulse duration (Pulse duration = 302,06 us - ITtime * 512 / fc).
+  * @return NFCTAG_StatusTypeDef enum status.
+  */
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadITPulse( ST25DV_PULSE_DURATION * const pITtime )
+{
+  uint8_t reg_value;
+  NFCTAG_StatusTypeDef status;
+  
+  /* Read ITtime register value */
+  status = ST25DV_i2c_ReadRegister( &reg_value, ST25DV_ITTIME_REG, 1 );
+  if( status != NFCTAG_OK )
+  {
+    return status;
+  }
+  
+  /* Extract delay coefficient value */
+  *pITtime = (ST25DV_PULSE_DURATION)reg_value;
+  
+  return NFCTAG_OK;
+}
+
+/**
+  * @brief    Configures the ST25DV ITtime duration for the GPO pulse.
+  * @details  Needs the I2C Password presentation to be effective.
+  * @param    ITtime Coefficient for the Pulse duration to be written (Pulse duration = 302,06 us - ITtime * 512 / fc)
+  * @retval   NFCTAG_StatusTypeDef enum status.
+  */
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteITPulse( const ST25DV_PULSE_DURATION ITtime )
+{
+  uint8_t reg_value;
+  
+  /* prepare data to write */
+  reg_value = (uint8_t)ITtime;
+  
+  /* Write value for ITtime register */
+  return ST25DV_i2c_WriteRegister( &reg_value, ST25DV_ITTIME_REG, 1 );
 }
 
 /**
   * @brief  Reads N bytes of Data, starting from the specified I2C address.
-  * @param  pObj the device pObj
   * @param  pData   Pointer used to return the read data.
   * @param  TarAddr I2C data memory address to read.
   * @param  NbByte  Number of bytes to be read.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-static int32_t ST25DV_ReadData(ST25DV_Object_t* pObj,  uint8_t * const pData, const uint16_t TarAddr, const uint16_t NbByte )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadData( uint8_t * const pData, const uint16_t TarAddr, const uint16_t NbByte )
 {
   /* Read Data in user memory */
-  return pObj->IO.Read(ST25DV_ADDR_DATA_I2C, TarAddr, pData, NbByte );
+  return ST25DV_IO_MemRead( pData, ST25DV_ADDR_DATA_I2C, TarAddr, NbByte );
 }
 
 /**
   * @brief  Writes N bytes of Data starting from the specified I2C Address.
-  * @param  pObj the device pObj
   * @param  pData   Pointer on the data to be written.
   * @param  TarAddr I2C data memory address to be written.
   * @param  NbByte  Number of bytes to be written.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-static int32_t ST25DV_WriteData(ST25DV_Object_t* pObj,  const uint8_t * const pData, const uint16_t TarAddr, const uint16_t NbByte )
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteData( const uint8_t * const pData, const uint16_t TarAddr, const uint16_t NbByte )
 { 
-  int32_t ret;
+  NFCTAG_StatusTypeDef ret;
   uint16_t split_data_nb;
   const uint8_t *pdata_index = (const uint8_t *)pData;
   uint16_t bytes_to_write = NbByte;
@@ -259,114 +412,54 @@ static int32_t ST25DV_WriteData(ST25DV_Object_t* pObj,  const uint8_t * const pD
       split_data_nb = bytes_to_write;
     }
     /* Write split_data_nb bytes in memory */
-    ret = pObj->IO.Write( ST25DV_ADDR_DATA_I2C, mem_addr, pdata_index, split_data_nb);
-
-    if( ret == ST25DV_OK )
-    {
-      int32_t pollstatus;
-      /* Poll until EEPROM is available */
-      uint32_t tickstart = pObj->IO.GetTick();
-      /* Wait until ST25DV is ready or timeout occurs */
-      do
-      {
-        pollstatus = pObj->IO.IsReady( ST25DV_ADDR_DATA_I2C, 1 );
-      } while( ( (uint32_t)((int32_t)pObj->IO.GetTick() - (int32_t)tickstart) < ST25DV_WRITE_TIMEOUT) && (pollstatus != ST25DV_OK) );
-      
-      if( pollstatus != ST25DV_OK )
-      {
-        ret = ST25DV_TIMEOUT;
-      }
-    }
+    ret = ST25DV_IO_MemWrite( pdata_index, ST25DV_ADDR_DATA_I2C, mem_addr, split_data_nb);
 
     /* update index, dest address, size for next write */
     pdata_index += split_data_nb;
     mem_addr += split_data_nb;
     bytes_to_write -= split_data_nb;
   }
-  while( ( bytes_to_write > 0 ) && ( ret == ST25DV_OK ) );
+  while( ( bytes_to_write > 0 ) && ( ret == NFCTAG_OK ) );
   
   return ret;
 }
 
 /**
-  * @brief  Reads the ST25DV IC Revision.
-  * @param  pObj the device pObj
-  * @param  pICRev Pointer on the uint8_t used to return the ST25DV IC Revision number.
-  * @retval Component error status.
+  * @brief  Reads N bytes of Data, starting at current address.
+  * @param  pData   Pointer used to return the read data.
+  * @param  NbByte  Number of bytes to be read.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadICRev(ST25DV_Object_t* pObj,  uint8_t * const pICRev )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadDataCurrentAddr( uint8_t * const pData, const uint16_t NbByte )
 {
-  /* Read ICRev on device */
-  return st25dv_get_icrev(&(pObj->Ctx), pICRev);
+  /* Read Data in user memory */
+  return ST25DV_IO_Read( pData, ST25DV_ADDR_DATA_I2C, NbByte );
 }
-
-
-/**
-  * @brief  Reads the ST25DV ITtime duration for the GPO pulses.
-  * @param  pObj the device pObj
-  * @param  pITtime Pointer used to return the coefficient for the GPO Pulse duration (Pulse duration = 302,06 us - ITtime * 512 / fc).
-  * @retval Component error status.
-  */
-int32_t ST25DV_ReadITPulse(ST25DV_Object_t* pObj, ST25DV_PULSE_DURATION * const pITtime )
-{
-  uint8_t reg_value;
-  int32_t status;
-  
-  /* Read ITtime register value */
-  status = st25dv_get_ittime_delay( &(pObj->Ctx), &reg_value);
-  if( status == ST25DV_OK )
-  {  
-    /* Extract delay coefficient value */
-    *pITtime = (ST25DV_PULSE_DURATION)reg_value;
-  }
-  return status;
-}
-
-/**
-  * @brief    Configures the ST25DV ITtime duration for the GPO pulse.
-  * @details  Needs the I2C Password presentation to be effective.
-  * @param    pObj the device pObj
-  * @param    ITtime Coefficient for the Pulse duration to be written (Pulse duration = 302,06 us - ITtime * 512 / fc)
-  * @retval   Component error status.
-  */
-int32_t ST25DV_WriteITPulse( ST25DV_Object_t* pObj, const ST25DV_PULSE_DURATION ITtime )
-{
-  uint8_t reg_value;
-  
-  /* prepare data to write */
-  reg_value = (uint8_t)ITtime;
-  
-  /* Write value for ITtime register */
-  return st25dv_set_ittime_delay( &(pObj->Ctx), &reg_value );
-}
-
 
 /**
   * @brief  Reads N bytes from Registers, starting at the specified I2C address.
-  * @param  pObj the device pObj
   * @param  pData   Pointer used to return the read data.
   * @param  TarAddr I2C memory address to be read.
   * @param  NbByte  Number of bytes to be read.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadRegister(ST25DV_Object_t* pObj,  uint8_t * const pData, const uint16_t TarAddr, const uint16_t NbByte )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadRegister( uint8_t * const pData, const uint16_t TarAddr, const uint16_t NbByte )
 {  
   /* Read Data in system memory */
-  return pObj->IO.Read( ST25DV_ADDR_SYST_I2C, TarAddr, pData,  NbByte );
+  return ST25DV_IO_MemRead( pData, ST25DV_ADDR_SYST_I2C, TarAddr, NbByte );
 }
 
 /**
   * @brief    Writes N bytes to the specified register.
-  * @param    pObj the device pObj
   * @details  Needs the I2C Password presentation to be effective.
   * @param    pData   Pointer on the data to be written.
   * @param    TarAddr I2C register address to written.
   * @param    NbByte  Number of bytes to be written.
-  * @retval   Component error status.
-*/
-int32_t ST25DV_WriteRegister(ST25DV_Object_t* pObj,  const uint8_t * const pData, const uint16_t TarAddr, const uint16_t NbByte )
+  * @return   NFCTAG_StatusTypeDef enum status.
+  */
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteRegister( const uint8_t * const pData, const uint16_t TarAddr, const uint16_t NbByte )
 { 
-  int32_t ret;
+  NFCTAG_StatusTypeDef ret;
   uint8_t split_data_nb;
   uint16_t bytes_to_write = NbByte;
   uint16_t mem_addr = TarAddr;
@@ -387,264 +480,253 @@ int32_t ST25DV_WriteRegister(ST25DV_Object_t* pObj,  const uint8_t * const pData
       split_data_nb = bytes_to_write;
     }
     /* Write split_data_nb bytes in register */
-    ret = pObj->IO.Write( ST25DV_ADDR_SYST_I2C, mem_addr, pdata_index,  split_data_nb);
-    if( ret == ST25DV_OK )
-    {
-      int32_t pollstatus;
-      /* Poll until EEPROM is available */
-      uint32_t tickstart = pObj->IO.GetTick();
-      /* Wait until ST25DV is ready or timeout occurs */
-      do
-      {
-        pollstatus = pObj->IO.IsReady( ST25DV_ADDR_DATA_I2C, 1 );
-      } while( ( (uint32_t)((int32_t)pObj->IO.GetTick() - (int32_t)tickstart) < ST25DV_WRITE_TIMEOUT) && (pollstatus != ST25DV_OK) );
-      
-      if( pollstatus != ST25DV_OK )
-      {
-        ret = ST25DV_TIMEOUT;
-      }
-    }
+    ret = ST25DV_IO_MemWrite( pdata_index, ST25DV_ADDR_SYST_I2C, mem_addr, split_data_nb);
 
     /* update index, dest address, size for next write */
     pdata_index += split_data_nb;
     mem_addr += split_data_nb;
     bytes_to_write -= split_data_nb;
   }
-  while( ( bytes_to_write > 0 ) && ( ret == ST25DV_OK ) );
+  while( ( bytes_to_write > 0 ) && ( ret == NFCTAG_OK ) );
   
   return ret;
 }
 
 /**
   * @brief  Reads the ST25DV UID.
-  * @param  pObj the device pObj
   * @param  pUid Pointer used to return the ST25DV UID value.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadUID(ST25DV_Object_t* pObj,  ST25DV_UID * const pUid )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadUID( ST25DV_UID * const pUid )
 {
   uint8_t reg_value[8];
   uint8_t i;
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   
   /* Read value of UID registers */
-  status = st25dv_get_uid( &(pObj->Ctx), reg_value);
-  if( status == ST25DV_OK )
+  status = ST25DV_i2c_ReadRegister( reg_value, ST25DV_UID_REG, 8 );
+  if( status != NFCTAG_OK )
   {
-    /* Store information in 2 WORD */
-    pUid->MsbUid = 0;
-  
-    for( i = 0; i < 4; i++ )
-    {
-      pUid->MsbUid = (pUid->MsbUid << 8) | reg_value[7 - i];
-    }
-  
-    pUid->LsbUid = 0;
-  
-    for( i = 0; i < 4; i++ )
-    {
-      pUid->LsbUid = (pUid->LsbUid << 8) | reg_value[3 - i];
-    }
+    return status;
   }
-  return status;
+  
+  /* Store information in 2 WORD */
+  pUid->MsbUid = 0;
+  
+  for( i = 0; i < 4; i++ )
+  {
+    pUid->MsbUid = (pUid->MsbUid << 8) | reg_value[7 - i];
+  }
+  
+  pUid->LsbUid = 0;
+  
+  for( i = 0; i < 4; i++ )
+  {
+    pUid->LsbUid = (pUid->LsbUid << 8) | reg_value[3 - i];
+  }
+  
+  return NFCTAG_OK;
 }
 
 /**
   * @brief  Reads the ST25DV DSFID.
-  * @param  pObj the device pObj
   * @param  pDsfid Pointer used to return the ST25DV DSFID value.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadDSFID(ST25DV_Object_t* pObj,  uint8_t * const pDsfid )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadDSFID( uint8_t * const pDsfid )
 {
   /* Read DSFID register */
-  return st25dv_get_dsfid(&(pObj->Ctx), pDsfid);
+  return ST25DV_i2c_ReadRegister( pDsfid, ST25DV_DSFID_REG, 1 );
 }
 
 /**
   * @brief  Reads the ST25DV DSFID RF Lock state.
-  * @param  pObj the device pObj
   * @param  pLockDsfid Pointer on a ST25DV_LOCK_STATUS used to return the DSFID lock state.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadDsfidRFProtection(ST25DV_Object_t* pObj,  ST25DV_LOCK_STATUS * const pLockDsfid )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadDsfidRFProtection( ST25DV_LOCK_STATUS * const pLockDsfid )
 {
   uint8_t reg_value;
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   
   /* Read register */
-  status = st25dv_get_lockdsfid(&(pObj->Ctx), &reg_value );
-  if( status == ST25DV_OK )
+  status = ST25DV_i2c_ReadRegister( &reg_value, ST25DV_LOCKDSFID_REG, 1 );
+  if( status != NFCTAG_OK )
   {
-  
-    /* Extract Lock Status */
-    if( reg_value == 0 )
-    {
-      *pLockDsfid = ST25DV_UNLOCKED;
-    }
-    else
-    {
-      *pLockDsfid = ST25DV_LOCKED;
-    }
+    return status;
   }
-  return status;
+  
+  /* Extract Lock Status */
+  if( reg_value == 0 )
+  {
+    *pLockDsfid = ST25DV_UNLOCKED;
+  }
+  else
+  {
+    *pLockDsfid = ST25DV_LOCKED;
+  }
+  return NFCTAG_OK;
 }
 
 /**
   * @brief  Reads the ST25DV AFI.
-  * @param  pObj the device pObj
   * @param  pAfi Pointer used to return the ST25DV AFI value.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadAFI(ST25DV_Object_t* pObj,  uint8_t * const pAfi )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadAFI( uint8_t * const pAfi )
 {
   /* Read AFI register */
-  return st25dv_get_afi(&(pObj->Ctx), pAfi);
+  return ST25DV_i2c_ReadRegister( pAfi, ST25DV_AFI_REG, 1 );
 }
 
 /**
   * @brief  Reads the AFI RF Lock state.
-  * @param  pObj the device pObj
   * @param  pLockAfi Pointer on a ST25DV_LOCK_STATUS used to return the ASFID lock state.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadAfiRFProtection(ST25DV_Object_t* pObj,  ST25DV_LOCK_STATUS * const pLockAfi )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadAfiRFProtection( ST25DV_LOCK_STATUS * const pLockAfi )
 {
   uint8_t reg_value;
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   
   /* Read register */
-  status = st25dv_get_lockafi( &(pObj->Ctx), &reg_value);
-  if( status == ST25DV_OK )
+  status = ST25DV_i2c_ReadRegister( &reg_value, ST25DV_LOCKAFI_REG, 1 );
+  if( status != NFCTAG_OK )
   {
- 
-    /* Extract Lock Status */
-    if( reg_value == 0 )
-    {
-      *pLockAfi = ST25DV_UNLOCKED;
-    }
-    else
-    {
-      *pLockAfi = ST25DV_LOCKED;
-    }
+    return status;
   }
-  return status;
+  
+  /* Extract Lock Status */
+  if( reg_value == 0 )
+  {
+    *pLockAfi = ST25DV_UNLOCKED;
+  }
+  else
+  {
+    *pLockAfi = ST25DV_LOCKED;
+  }
+  return NFCTAG_OK;
 }
 
 /**
   * @brief  Reads the I2C Protected Area state.
-  * @param  pObj the device pObj
   * @param  pProtZone Pointer on a ST25DV_I2C_PROT_ZONE structure used to return the Protected Area state.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadI2CProtectZone(ST25DV_Object_t* pObj,  ST25DV_I2C_PROT_ZONE * const pProtZone )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadI2CProtectZone( ST25DV_I2C_PROT_ZONE * const pProtZone )
 {
   uint8_t reg_value;
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   
   /* Read value of I2c Protected Zone register */
-  status = st25dv_get_i2css_all( &(pObj->Ctx), &reg_value);
-  if( status == ST25DV_OK )
+  status = ST25DV_i2c_ReadRegister( &reg_value, ST25DV_I2CZSS_REG, 1 );
+  if( status != NFCTAG_OK )
   {
-  
-    /* Dispatch information to corresponding struct member */
-    pProtZone->ProtectZone1 = (ST25DV_PROTECTION_CONF)( (reg_value & ST25DV_I2CSS_PZ1_MASK) >> ST25DV_I2CSS_PZ1_SHIFT );
-    pProtZone->ProtectZone2 = (ST25DV_PROTECTION_CONF)( (reg_value & ST25DV_I2CSS_PZ2_MASK) >> ST25DV_I2CSS_PZ2_SHIFT );
-    pProtZone->ProtectZone3 = (ST25DV_PROTECTION_CONF)( (reg_value & ST25DV_I2CSS_PZ3_MASK) >> ST25DV_I2CSS_PZ3_SHIFT );
-    pProtZone->ProtectZone4 = (ST25DV_PROTECTION_CONF)( (reg_value & ST25DV_I2CSS_PZ4_MASK) >> ST25DV_I2CSS_PZ4_SHIFT );
+    return status;
   }
-  return status;
+  
+  /* Dispatch information to corresponding struct member */
+  pProtZone->ProtectZone1 = (ST25DV_PROTECTION_CONF)( (reg_value & ST25DV_I2CZSS_PZ1_MASK) >> ST25DV_I2CZSS_PZ1_SHIFT );
+  pProtZone->ProtectZone2 = (ST25DV_PROTECTION_CONF)( (reg_value & ST25DV_I2CZSS_PZ2_MASK) >> ST25DV_I2CZSS_PZ2_SHIFT );
+  pProtZone->ProtectZone3 = (ST25DV_PROTECTION_CONF)( (reg_value & ST25DV_I2CZSS_PZ3_MASK) >> ST25DV_I2CZSS_PZ3_SHIFT );
+  pProtZone->ProtectZone4 = (ST25DV_PROTECTION_CONF)( (reg_value & ST25DV_I2CZSS_PZ4_MASK) >> ST25DV_I2CZSS_PZ4_SHIFT );
+  
+  return NFCTAG_OK;
 }
 
 /**
   * @brief    Sets the I2C write-protected state to an EEPROM Area.
   * @details  Needs the I2C Password presentation to be effective.
-  * @param    pObj the device pObj
   * @param    Zone                ST25DV_PROTECTION_ZONE value coresponding to the area to protect.
   * @param    ReadWriteProtection ST25DV_PROTECTION_CONF value corresponding to the protection to be set.
-  * @retval   Component error status.
-*/
-int32_t ST25DV_WriteI2CProtectZonex(ST25DV_Object_t* pObj,  const ST25DV_PROTECTION_ZONE Zone, const ST25DV_PROTECTION_CONF ReadWriteProtection )
+  * @return   NFCTAG_StatusTypeDef enum status.
+  */
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteI2CProtectZonex( const ST25DV_PROTECTION_ZONE Zone, const ST25DV_PROTECTION_CONF ReadWriteProtection )
 {
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   uint8_t reg_value = 0;
-   
+  
+  /* Read actual i2c Zone Security Status */
+  status = ST25DV_i2c_ReadRegister( &reg_value, ST25DV_I2CZSS_REG, 1);
+  if( status != NFCTAG_OK )
+    return status;
+  
   /* Compute and update new i2c Zone Security Status */
   switch( Zone )
   {
     case ST25DV_PROT_ZONE1:
+      reg_value &= ST25DV_I2CZSS_PZ1_FIELD;
       /* Read protection is not allowed for Zone 1 */
-      reg_value = (ReadWriteProtection & 0x01);
-      status = st25dv_set_i2css_pz1( &(pObj->Ctx), &reg_value);
+      reg_value |= (ReadWriteProtection & 0x01) << ST25DV_I2CZSS_PZ1_SHIFT;
       break;
     case ST25DV_PROT_ZONE2:
-      reg_value = ReadWriteProtection;
-      status = st25dv_set_i2css_pz2( &(pObj->Ctx), &reg_value);
+      reg_value &= ST25DV_I2CZSS_PZ2_FIELD;
+      reg_value |= ReadWriteProtection << ST25DV_I2CZSS_PZ2_SHIFT;
       break;
     case ST25DV_PROT_ZONE3:
-      reg_value = ReadWriteProtection;
-      status = st25dv_set_i2css_pz3( &(pObj->Ctx), &reg_value);
+      reg_value &= ST25DV_I2CZSS_PZ3_FIELD;
+      reg_value |= ReadWriteProtection << ST25DV_I2CZSS_PZ3_SHIFT;
       break;
     case ST25DV_PROT_ZONE4:
-      reg_value = ReadWriteProtection;
-      status = st25dv_set_i2css_pz4( &(pObj->Ctx), &reg_value);
+      reg_value &= ST25DV_I2CZSS_PZ4_FIELD;
+      reg_value |= ReadWriteProtection << ST25DV_I2CZSS_PZ4_SHIFT;
       break;
     
     default:
-      return ST25DV_ERROR;
+      return NFCTAG_ERROR;
   }
   
   /* Write I2CZSS register */
-  return status;
+  return ST25DV_i2c_WriteRegister( &reg_value, ST25DV_I2CZSS_REG, 1 );
 }
 
 /**
   * @brief  Reads the CCile protection state.
-  * @param  pObj the device pObj
   * @param  pLockCCFile Pointer on a ST25DV_LOCK_CCFILE value corresponding to the lock state of the CCFile.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadLockCCFile(ST25DV_Object_t* pObj,  ST25DV_LOCK_CCFILE * const pLockCCFile )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadLockCCFile( ST25DV_LOCK_CCFILE * const pLockCCFile )
 {
   uint8_t reg_value;
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   
   /* Get actual LOCKCCFILE register value */
-  status = st25dv_get_lockccfile_all( &(pObj->Ctx), &reg_value);
-  if( status == ST25DV_OK )
+  status = ST25DV_i2c_ReadRegister( &reg_value, ST25DV_LOCKCCFILE_REG, 1 );
+  if( status != NFCTAG_OK )
   {
-  
-    /* Extract CCFile block information */
-    if( reg_value & ST25DV_LOCKCCFILE_BLCK0_MASK )
-    {
-      pLockCCFile->LckBck0 = ST25DV_LOCKED;
-    }
-    else
-    {
-      pLockCCFile->LckBck0 = ST25DV_UNLOCKED;
-    }
-  
-    if( reg_value & ST25DV_LOCKCCFILE_BLCK1_MASK )
-    {
-      pLockCCFile->LckBck1 = ST25DV_LOCKED;
-    }
-    else
-    {
-      pLockCCFile->LckBck1 = ST25DV_UNLOCKED;
-    }
+    return status;
   }
+  
+  /* Extract CCFile block information */
+  if( (reg_value & ST25DV_LOCKCCFILE_BLCK0_MASK)  == ST25DV_LOCKCCFILE_BLCK0_MASK )
+  {
+    pLockCCFile->LckBck0 = ST25DV_LOCKED;
+  }
+  else
+  {
+    pLockCCFile->LckBck0 = ST25DV_UNLOCKED;
+  }
+  
+  if( (reg_value & ST25DV_LOCKCCFILE_BLCK1_MASK)  == ST25DV_LOCKCCFILE_BLCK1_MASK )
+  {
+    pLockCCFile->LckBck1 = ST25DV_LOCKED;
+  }
+  else
+  {
+    pLockCCFile->LckBck1 = ST25DV_UNLOCKED;
+  }
+  
   return status;
 }
 
 /**
   * @brief  Locks the CCile to prevent any RF write access.
   * @details  Needs the I2C Password presentation to be effective.
-  * @param  pObj the device pObj
   * @param  NbBlockCCFile ST25DV_CCFILE_BLOCK value corresponding to the number of blocks to be locked.
   * @param  LockCCFile    ST25DV_LOCK_CCFILE value corresponding to the lock state to apply on the CCFile.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_WriteLockCCFile(ST25DV_Object_t* pObj,  const ST25DV_CCFILE_BLOCK NbBlockCCFile, const ST25DV_LOCK_STATUS LockCCFile )
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteLockCCFile( const ST25DV_CCFILE_BLOCK NbBlockCCFile, const ST25DV_LOCK_STATUS LockCCFile )
 {
   uint8_t reg_value;
   
@@ -673,46 +755,45 @@ int32_t ST25DV_WriteLockCCFile(ST25DV_Object_t* pObj,  const ST25DV_CCFILE_BLOCK
   }
   
   /* Write LOCKCCFILE register */
-  return st25dv_set_lockccfile_all( &(pObj->Ctx), &reg_value);
+  return ST25DV_i2c_WriteRegister( &reg_value, ST25DV_LOCKCCFILE_REG, 1 );
 }
 
 /**
   * @brief  Reads the Cfg registers protection.
-  * @param  pObj the device pObj
   * @param  pLockCfg Pointer on a ST25DV_LOCK_STATUS value corresponding to the Cfg registers lock state.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadLockCFG(ST25DV_Object_t* pObj,  ST25DV_LOCK_STATUS * const pLockCfg )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadLockCFG( ST25DV_LOCK_STATUS * const pLockCfg )
 {
   uint8_t reg_value;
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   
   /* Get actual LOCKCCFILE register value */
-  status = st25dv_get_lockcfg_b0(&(pObj->Ctx), &reg_value);
-  if( status == ST25DV_OK )
+  status = ST25DV_i2c_ReadRegister( &reg_value, ST25DV_LOCKCFG_REG, 1 );
+  if( status != NFCTAG_OK )
   {
-
-    /* Extract LOCKCFG block information */
-    if( reg_value )
-    {
-      *pLockCfg = ST25DV_LOCKED;
-    }
-    else
-    {
-      *pLockCfg = ST25DV_UNLOCKED;
-    }
+    return status;
   }
-  return status;  
+
+  /* Extract LOCKCFG block information */
+  if( (reg_value & ST25DV_LOCKCFG_B0_MASK) == ST25DV_LOCKCFG_B0_MASK )
+  {
+    *pLockCfg = ST25DV_LOCKED;
+  }
+  else
+  {
+    *pLockCfg = ST25DV_UNLOCKED;
+  }
+  return NFCTAG_OK;  
 }
 
 /**
   * @brief  Lock/Unlock the Cfg registers, to prevent any RF write access.
   * @details  Needs the I2C Password presentation to be effective.
-  * @param  pObj the device pObj
   * @param  LockCfg ST25DV_LOCK_STATUS value corresponding to the lock state to be written.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_WriteLockCFG(ST25DV_Object_t* pObj,  const ST25DV_LOCK_STATUS LockCfg )
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteLockCFG( const ST25DV_LOCK_STATUS LockCfg )
 {
   uint8_t reg_value;
   
@@ -720,16 +801,15 @@ int32_t ST25DV_WriteLockCFG(ST25DV_Object_t* pObj,  const ST25DV_LOCK_STATUS Loc
   reg_value = (uint8_t)LockCfg;
   
   /* Write LOCKCFG register */
-  return st25dv_set_lockcfg_b0(&(pObj->Ctx), &reg_value );
+  return ST25DV_i2c_WriteRegister( &reg_value, ST25DV_LOCKCFG_REG, 1 );
 }
 
 /**
   * @brief  Presents I2C password, to authorize the I2C writes to protected areas.
-  * @param  pObj the device pObj
   * @param  PassWord Password value on 32bits
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_PresentI2CPassword(ST25DV_Object_t* pObj,  const ST25DV_PASSWD PassWord )
+NFCTAG_StatusTypeDef ST25DV_i2c_PresentI2CPassword( const ST25DV_PASSWD PassWord )
 {
   uint8_t ai2c_message[17] = {0};
   uint8_t i;
@@ -745,17 +825,16 @@ int32_t ST25DV_PresentI2CPassword(ST25DV_Object_t* pObj,  const ST25DV_PASSWD Pa
   };
   
   /* Present password to ST25DV */
-  return ST25DV_WriteRegister(pObj, ai2c_message, ST25DV_I2CPASSWD_REG, 17 );
+  return ST25DV_i2c_WriteRegister( ai2c_message, ST25DV_I2CPASSWD_REG, 17 );
 }
 
 /**
   * @brief  Writes a new I2C password.
   * @details  Needs the I2C Password presentation to be effective.
-  * @param  pObj the device pObj
   * @param  PassWord New I2C PassWord value on 32bits.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_WriteI2CPassword( ST25DV_Object_t* pObj, const ST25DV_PASSWD PassWord )
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteI2CPassword( const ST25DV_PASSWD PassWord )
 {
   uint8_t ai2c_message[17] = {0};
   uint8_t i;
@@ -772,118 +851,124 @@ int32_t ST25DV_WriteI2CPassword( ST25DV_Object_t* pObj, const ST25DV_PASSWD Pass
   };
   
   /* Write new password in I2CPASSWD register */
-  return ST25DV_WriteRegister(pObj, ai2c_message, ST25DV_I2CPASSWD_REG, 17 );
+  return ST25DV_i2c_WriteRegister( ai2c_message, ST25DV_I2CPASSWD_REG, 17 );
 }
 
 /**
   * @brief  Reads the RF Zone Security Status (defining the allowed RF accesses).
-  * @param  pObj the device pObj
   * @param  Zone        ST25DV_PROTECTION_ZONE value coresponding to the protected area.
   * @param  pRfprotZone Pointer on a ST25DV_RF_PROT_ZONE value corresponding to the area protection state.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadRFZxSS( ST25DV_Object_t* pObj, const ST25DV_PROTECTION_ZONE Zone, ST25DV_RF_PROT_ZONE * const pRfprotZone )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadRFZxSS( const ST25DV_PROTECTION_ZONE Zone, ST25DV_RF_PROT_ZONE * const pRfprotZone )
 {
   uint8_t reg_value;
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
+  uint16_t sector_security_addr;
   
-  /* Read actual value of Sector Security Status register */
+  /* Select Sector Security register address */
   switch( Zone )
   {
     case ST25DV_PROT_ZONE1:
-      status = st25dv_get_rfa1ss_all(&(pObj->Ctx), &reg_value);
+      sector_security_addr = ST25DV_RFZ1SS_REG;
       break;
     case ST25DV_PROT_ZONE2:
-      status = st25dv_get_rfa2ss_all(&(pObj->Ctx), &reg_value);
+      sector_security_addr = ST25DV_RFZ2SS_REG;
       break;
     case ST25DV_PROT_ZONE3:
-      status = st25dv_get_rfa3ss_all(&(pObj->Ctx), &reg_value);
+      sector_security_addr = ST25DV_RFZ3SS_REG;
       break;
     case ST25DV_PROT_ZONE4:
-      status = st25dv_get_rfa4ss_all(&(pObj->Ctx), &reg_value);
+      sector_security_addr = ST25DV_RFZ4SS_REG;
       break;
+    
     default:
-      status = ST25DV_ERROR;
+      return NFCTAG_ERROR;
   }
   
-  if( status == ST25DV_OK )
+  /* Read actual value of Sector Security Status register */
+  status = ST25DV_i2c_ReadRegister( &reg_value, sector_security_addr, 1 );
+  if( status != NFCTAG_OK )
   {
-    /* Extract Sector Security Status configuration */
-    pRfprotZone->PasswdCtrl = (ST25DV_PASSWD_PROT_STATUS)((reg_value & ST25DV_RFA1SS_PWDCTRL_MASK) >> ST25DV_RFA1SS_PWDCTRL_SHIFT);
-    pRfprotZone->RWprotection = (ST25DV_PROTECTION_CONF)((reg_value & ST25DV_RFA1SS_RWPROT_MASK) >> ST25DV_RFA1SS_RWPROT_SHIFT);
+    return status;
   }
-  return status;
+  
+  /* Extract Sector Security Status configuration */
+  pRfprotZone->PasswdCtrl = (ST25DV_PASSWD_PROT_STATUS)((reg_value & ST25DV_RFZSS_PWDCTRL_MASK) >> ST25DV_RFZSS_PWDCTRL_SHIFT);
+  pRfprotZone->RWprotection = (ST25DV_PROTECTION_CONF)((reg_value & ST25DV_RFZSS_RWPROT_MASK) >> ST25DV_RFZSS_RWPROT_SHIFT);
+  
+  return NFCTAG_OK;
 }
 
 /**
   * @brief  Writes the RF Zone Security Status (defining the allowed RF accesses)
   * @details  Needs the I2C Password presentation to be effective.
-  * @param  pObj the device pObj
   * @param  Zone        ST25DV_PROTECTION_ZONE value corresponding to the area on which to set the RF protection.
   * @param  RfProtZone  Pointer on a ST25DV_RF_PROT_ZONE value defininf the protection to be set on the area.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_WriteRFZxSS( ST25DV_Object_t* pObj, const ST25DV_PROTECTION_ZONE Zone, const ST25DV_RF_PROT_ZONE RfProtZone )
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteRFZxSS( const ST25DV_PROTECTION_ZONE Zone, const ST25DV_RF_PROT_ZONE RfProtZone )
 {
   uint8_t reg_value;
-  int32_t status;
+  uint16_t sector_security_addr;
   
-
-  /* Update Sector Security Status */
-  reg_value = (RfProtZone.RWprotection << ST25DV_RFA1SS_RWPROT_SHIFT) & ST25DV_RFA1SS_RWPROT_MASK;
-  reg_value |= ((RfProtZone.PasswdCtrl << ST25DV_RFA1SS_PWDCTRL_SHIFT) & ST25DV_RFA1SS_PWDCTRL_MASK);
-  
-  /* Write Sector Security register */
+  /* Select Sector Security register address */
   switch( Zone )
   {
     case ST25DV_PROT_ZONE1:
-      status = st25dv_set_rfa1ss_all(&(pObj->Ctx), &reg_value);
+      sector_security_addr = ST25DV_RFZ1SS_REG;
       break;
     case ST25DV_PROT_ZONE2:
-      status = st25dv_set_rfa2ss_all(&(pObj->Ctx), &reg_value);
+      sector_security_addr = ST25DV_RFZ2SS_REG;
       break;
     case ST25DV_PROT_ZONE3:
-      status = st25dv_set_rfa3ss_all(&(pObj->Ctx), &reg_value);
+      sector_security_addr = ST25DV_RFZ3SS_REG;
       break;
     case ST25DV_PROT_ZONE4:
-      status = st25dv_set_rfa4ss_all(&(pObj->Ctx), &reg_value);
+      sector_security_addr = ST25DV_RFZ4SS_REG;
       break;
     
     default:
-      status = ST25DV_ERROR;
+      return NFCTAG_ERROR;
   }
-    return status; 
+  
+  /* Update Sector Security Status */
+  reg_value = (RfProtZone.RWprotection << ST25DV_RFZSS_RWPROT_SHIFT) & ST25DV_RFZSS_RWPROT_MASK;
+  reg_value |= ((RfProtZone.PasswdCtrl << ST25DV_RFZSS_PWDCTRL_SHIFT) & ST25DV_RFZSS_PWDCTRL_MASK);
+  
+  /* Write Sector Security register */
+  return ST25DV_i2c_WriteRegister( &reg_value, sector_security_addr, 1 );
 }
 
 /**
   * @brief  Reads the value of the an area end address.
-  * @param  pObj the device pObj
   * @param  EndZone ST25DV_END_ZONE value corresponding to an area end address.
   * @param  pEndZ   Pointer used to return the end address of the area.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadEndZonex( ST25DV_Object_t* pObj, const ST25DV_END_ZONE EndZone, uint8_t * pEndZ )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadEndZonex( const ST25DV_END_ZONE EndZone, uint8_t * const pEndZ )
 {
-  int32_t status;
-
-  /* Read the corresponding End zone */ 
+  uint16_t mem_addr;
+  
+  /* End zone register address to read */
   switch( EndZone )
   {
     case ST25DV_ZONE_END1:
-      status = st25dv_get_enda1(&(pObj->Ctx),pEndZ);
+      mem_addr = ST25DV_END1_REG;
       break;
     case ST25DV_ZONE_END2:
-      status = st25dv_get_enda2(&(pObj->Ctx),pEndZ);
+      mem_addr = ST25DV_END2_REG;
       break;
     case ST25DV_ZONE_END3:
-      status = st25dv_get_enda3(&(pObj->Ctx),pEndZ);
+      mem_addr = ST25DV_END3_REG;
       break;
     
     default:
-      status = ST25DV_ERROR;
+      return NFCTAG_ERROR;
   }
   
-  return status;
+  /* Read the corresponding End zone */ 
+  return ST25DV_i2c_ReadRegister( pEndZ, mem_addr, 1 );
 }
 
 /**
@@ -891,33 +976,36 @@ int32_t ST25DV_ReadEndZonex( ST25DV_Object_t* pObj, const ST25DV_END_ZONE EndZon
   * @details  Needs the I2C Password presentation to be effective.
   * @note     The ST25DV answers a NACK when setting the EndZone2 & EndZone3 to same value than repectively EndZone1 & EndZone2.\n
   *           These NACKs are ok.
-  * @param  pObj the device pObj
   * @param  EndZone ST25DV_END_ZONE value corresponding to an area.
   * @param  EndZ   End zone value to be written.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_WriteEndZonex( ST25DV_Object_t* pObj, const ST25DV_END_ZONE EndZone, const uint8_t EndZ )
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteEndZonex( const ST25DV_END_ZONE EndZone, const uint8_t EndZ )
 {
-  int32_t status;
+  uint16_t mem_addr;
+  NFCTAG_StatusTypeDef ret;
   
-  /* Write the corresponding End zone value in register */  
+  /* End zone register address to write */
   switch( EndZone )
   {
     case ST25DV_ZONE_END1:
-      status = st25dv_set_enda1(&(pObj->Ctx),&EndZ);
+      mem_addr = ST25DV_END1_REG;
       break;
     case ST25DV_ZONE_END2:
-      status = st25dv_set_enda2(&(pObj->Ctx),&EndZ);
+      mem_addr = ST25DV_END2_REG;
       break;
     case ST25DV_ZONE_END3:
-      status = st25dv_set_enda3(&(pObj->Ctx),&EndZ);
+      mem_addr = ST25DV_END3_REG;
       break;
     
     default:
-      status = ST25DV_ERROR;
+      return NFCTAG_ERROR;
   }
 
-  return status;
+  /* Write the corresponding End zone value in register */
+  ret = ST25DV_i2c_WriteRegister( &EndZ, mem_addr, 1 );
+  
+  return ret;
 }
 
 /**
@@ -925,60 +1013,67 @@ int32_t ST25DV_WriteEndZonex( ST25DV_Object_t* pObj, const ST25DV_END_ZONE EndZo
   * @details  Needs the I2C Password presentation to be effective..
   *           The ST25DV answers a NACK when setting the EndZone2 & EndZone3 to same value than repectively EndZone1 & EndZone2.
   *           These NACKs are ok.
-  * @param  pObj the device pObj
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_InitEndZone( ST25DV_Object_t* pObj )
+NFCTAG_StatusTypeDef ST25DV_i2c_InitEndZone( void )
 {
   uint8_t endval = 0xFF;
   uint32_t maxmemlength;
   ST25DV_MEM_SIZE memsize;
-  int32_t ret;
+  NFCTAG_StatusTypeDef ret;
   
   memsize.Mem_Size = 0;
   memsize.BlockSize = 0;
 
   /* Get EEPROM mem size */
-  ST25DV_ReadMemSize(pObj, &memsize );
+  ST25DV_i2c_ReadMemSize( &memsize );
   maxmemlength = (memsize.Mem_Size + 1) * (memsize.BlockSize + 1);
   
   /* Compute Max value for endzone register */
   endval = (maxmemlength / 32) - 1;
   
   /* Write EndZone value to ST25DV registers */
-  ret = ST25DV_WriteEndZonex(pObj, ST25DV_ZONE_END3, endval );
-  if( (ret == ST25DV_OK) || (ret == ST25DV_NACK) )
+  ret = ST25DV_i2c_WriteEndZonex( ST25DV_ZONE_END3, endval );
+  if( (ret != NFCTAG_OK) && (ret != NFCTAG_NACK) )
   {
-    ret = ST25DV_WriteEndZonex(pObj,  ST25DV_ZONE_END2, endval );
-    if( (ret == ST25DV_OK) || (ret == ST25DV_NACK) )
-    {
-      ret = ST25DV_WriteEndZonex(pObj,  ST25DV_ZONE_END1, endval );
-    }
+    return ret;
   }
+
+  ret = ST25DV_i2c_WriteEndZonex( ST25DV_ZONE_END2, endval );
+  if( (ret != NFCTAG_OK) && (ret != NFCTAG_NACK) )
+  {
+    return ret;
+  }
+
+  ret = ST25DV_i2c_WriteEndZonex( ST25DV_ZONE_END1, endval );
+  if( (ret != NFCTAG_OK) && (ret != NFCTAG_NACK) )
+  {
+    return ret;
+  }
+  
   return ret;
 }
 
 /**
   * @brief  Creates user areas with defined lengths.
   * @details  Needs the I2C Password presentation to be effective.
-  * @param  pObj the device pObj
   * @param  Zone1Length Length of area1 in bytes (32 to 8192, 0x20 to 0x2000)
   * @param  Zone2Length Length of area2 in bytes (0 to 8128, 0x00 to 0x1FC0)
   * @param  Zone3Length Length of area3 in bytes (0 to 8064, 0x00 to 0x1F80)
   * @param  Zone4Length Length of area4 in bytes (0 to 8000, 0x00 to 0x1F40)
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_CreateUserZone( ST25DV_Object_t* pObj, uint16_t Zone1Length, uint16_t Zone2Length, uint16_t Zone3Length, uint16_t Zone4Length )
+NFCTAG_StatusTypeDef ST25DV_i2c_CreateUserZone( uint16_t Zone1Length, uint16_t Zone2Length, uint16_t Zone3Length, uint16_t Zone4Length )
 {
   uint8_t EndVal;
   ST25DV_MEM_SIZE memsize;
   uint16_t maxmemlength = 0;
-  int32_t ret = ST25DV_OK;
+  NFCTAG_StatusTypeDef ret;
   
   memsize.Mem_Size = 0;
   memsize.BlockSize = 0;
 
-  ST25DV_ReadMemSize(pObj, &memsize );
+  ST25DV_i2c_ReadMemSize( &memsize );
   
   maxmemlength = (memsize.Mem_Size + 1) * (memsize.BlockSize + 1);
   
@@ -986,124 +1081,120 @@ int32_t ST25DV_CreateUserZone( ST25DV_Object_t* pObj, uint16_t Zone1Length, uint
   if( ( Zone1Length < 32 ) || ( Zone1Length > maxmemlength ) || ( Zone2Length > (maxmemlength - 32) ) 
       || ( Zone3Length > (maxmemlength - 64) ) || ( Zone4Length > (maxmemlength - 96) ) )
   {
-    ret = ST25DV_ERROR;
+    return NFCTAG_ERROR;
   }
 
   /* Checks that the total is less than the authorised maximum */
   if( ( Zone1Length + Zone2Length + Zone3Length + Zone4Length ) > maxmemlength )
   {
-    ret = ST25DV_ERROR;
+    return NFCTAG_ERROR;
   }
   
-  if ( ret == ST25DV_OK)
+  /* if The value for each Length is not a multiple of 64 correct it. */
+  if( (Zone1Length % 32) != 0 )
   {
-    /* if The value for each Length is not a multiple of 64 correct it. */
-    if( (Zone1Length % 32) != 0 )
-    {
-      Zone1Length = Zone1Length - ( Zone1Length % 32 );
-    }
-  
-    if( (Zone2Length % 32) != 0 )
-    {
-      Zone2Length = Zone2Length - ( Zone2Length % 32 );
-    }
-  
-    if( (Zone3Length % 32) != 0 )
-    {
-      Zone3Length = Zone3Length - ( Zone3Length % 32 );
-    }
-  
-    /* First right 0xFF in each Endx value */
-    ret = ST25DV_InitEndZone( pObj);
-    if( (ret == ST25DV_OK) || (ret == ST25DV_NACK) )
-    {
-      /* Then Write corresponding value for each zone */
-      EndVal = (uint8_t)( (Zone1Length / 32 ) - 1 );
-      ret = ST25DV_WriteEndZonex(pObj, ST25DV_ZONE_END1, EndVal );
-      if( (ret == ST25DV_OK) || (ret == ST25DV_NACK) )
-      {
-  
-        EndVal = (uint8_t)( ((Zone1Length + Zone2Length) / 32 ) - 1 );
-        ret = ST25DV_WriteEndZonex(pObj, ST25DV_ZONE_END2, EndVal );
-        if( (ret == ST25DV_OK) || (ret == ST25DV_NACK) )
-        {
-          EndVal = (uint8_t)( ((Zone1Length + Zone2Length + Zone3Length) / 32 ) - 1 );
-          ret = ST25DV_WriteEndZonex(pObj, ST25DV_ZONE_END3, EndVal );
-        }
-      }
-    }
+    Zone1Length = Zone1Length - ( Zone1Length % 32 );
   }
-  return ret;
+  
+  if( (Zone2Length % 32) != 0 )
+  {
+    Zone2Length = Zone2Length - ( Zone2Length % 32 );
+  }
+  
+  if( (Zone3Length % 32) != 0 )
+  {
+    Zone3Length = Zone3Length - ( Zone3Length % 32 );
+  }
+  
+  /* First right 0xFF in each Endx value */
+  ret = ST25DV_i2c_InitEndZone( );
+  if( (ret != NFCTAG_OK) && (ret != NFCTAG_NACK) )
+  {
+    return ret;
+  }
+  
+  /* Then Write corresponding value for each zone */
+  EndVal = (uint8_t)( (Zone1Length / 32 ) - 1 );
+  ret = ST25DV_i2c_WriteEndZonex( ST25DV_ZONE_END1, EndVal );
+  if( (ret != NFCTAG_OK) && (ret != NFCTAG_NACK) )
+  {
+    return ret;
+  }
+  
+  EndVal = (uint8_t)( ((Zone1Length + Zone2Length) / 32 ) - 1 );
+  ret = ST25DV_i2c_WriteEndZonex( ST25DV_ZONE_END2, EndVal );
+  if( (ret != NFCTAG_OK) && (ret != NFCTAG_NACK) )
+  {
+    return ret;
+  }
+  
+  EndVal = (uint8_t)( ((Zone1Length + Zone2Length + Zone3Length) / 32 ) - 1 );
+  ret = ST25DV_i2c_WriteEndZonex( ST25DV_ZONE_END3, EndVal );
+  if( (ret != NFCTAG_OK) && (ret != NFCTAG_NACK) )
+  {
+    return ret;
+  }
+  
+  return NFCTAG_OK;
 }
 
 /**
   * @brief  Reads the ST25DV Memory Size.
-  * @param  pObj the device pObj
   * @param  pSizeInfo Pointer on a ST25DV_MEM_SIZE structure used to return the Memory size information.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadMemSize( ST25DV_Object_t* pObj, ST25DV_MEM_SIZE * const pSizeInfo )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadMemSize( ST25DV_MEM_SIZE * const pSizeInfo )
 {
-  uint8_t memsize_msb;
-  uint8_t memsize_lsb;
-  int32_t status;
+  uint8_t reg_value[3];
+  NFCTAG_StatusTypeDef status;
   
   /* Read actual value of MEM_SIZE register */
-  status = st25dv_get_mem_size_lsb(&(pObj->Ctx), &memsize_lsb);
-  if( status == ST25DV_OK )
-  {
-    status = st25dv_get_mem_size_msb(&(pObj->Ctx), &memsize_msb);
-    if( status == ST25DV_OK )
-    {
-      status = st25dv_get_blk_size(&(pObj->Ctx), &(pSizeInfo->BlockSize));
-      if( status == ST25DV_OK )
-      {
-        /* Extract Memory information */
-        pSizeInfo->Mem_Size = memsize_msb;
-        pSizeInfo->Mem_Size = (pSizeInfo->Mem_Size << 8) |memsize_lsb;
-      }
-    }
-  }
-  return status;
+  status = ST25DV_i2c_ReadRegister( reg_value, ST25DV_MEM_SIZE_REG, 3 );
+  if( status != NFCTAG_OK )
+    return status;
+  
+  /* Extract Memory information */
+  pSizeInfo->BlockSize = reg_value[2];
+  pSizeInfo->Mem_Size = reg_value[1];
+  pSizeInfo->Mem_Size = (pSizeInfo->Mem_Size << 8) | reg_value[0];
+  return NFCTAG_OK;
 }
 
 /**
   * @brief  Reads the Energy harvesting mode.
-  * @param  pObj the device pObj
   * @param  pEH_mode Pointer on a ST25DV_EH_MODE_STATUS value corresponding to the Energy Harvesting state.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadEHMode( ST25DV_Object_t* pObj, ST25DV_EH_MODE_STATUS * const pEH_mode )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadEHMode( ST25DV_EH_MODE_STATUS * const pEH_mode )
 {
   uint8_t reg_value;
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   
   /* Read actual value of EH_MODE register */
-  status = st25dv_get_eh_mode( &(pObj->Ctx), &reg_value);
-  if( status == ST25DV_OK )
+  status = ST25DV_i2c_ReadRegister( &reg_value, ST25DV_EH_MODE_REG, 1 );
+  if( status != NFCTAG_OK )
+    return status;
+  
+  /* Extract EH_mode configuration */
+  if( (reg_value & ST25DV_EH_MODE_MASK) == ST25DV_EH_MODE_MASK )
   {
-    /* Extract EH_mode configuration */
-    if( reg_value )
-    {
-      *pEH_mode = ST25DV_EH_ON_DEMAND;
-    }
-    else
-    {
-      *pEH_mode = ST25DV_EH_ACTIVE_AFTER_BOOT;
-    }
+    *pEH_mode = ST25DV_EH_ON_DEMAND;
+  }
+  else
+  {
+    *pEH_mode = ST25DV_EH_ACTIVE_AFTER_BOOT;
   }
   
-  return status;
+  return NFCTAG_OK;
 }
 
 /**
   * @brief  Sets the Energy harvesting mode.
   * @details  Needs the I2C Password presentation to be effective.
-  * @param  pObj the device pObj
   * @param  EH_mode ST25DV_EH_MODE_STATUS value for the Energy harvesting mode to be set.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_WriteEHMode( ST25DV_Object_t* pObj, const ST25DV_EH_MODE_STATUS EH_mode )
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteEHMode( const ST25DV_EH_MODE_STATUS EH_mode )
 {
   uint8_t reg_value;
   
@@ -1111,24 +1202,23 @@ int32_t ST25DV_WriteEHMode( ST25DV_Object_t* pObj, const ST25DV_EH_MODE_STATUS E
   reg_value = (uint8_t)EH_mode;
   
   /* Write EH_MODE register */
-  return st25dv_set_eh_mode(&(pObj->Ctx), &reg_value);
+  return ST25DV_i2c_WriteRegister( &reg_value, ST25DV_EH_MODE_REG, 1 );
 }
 
 /**
   * @brief  Reads the RF Management configuration.
-  * @param  pObj the device pObj
   * @param  pRF_Mngt Pointer on a ST25DV_RF_MNGT structure used to return the RF Management configuration.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadRFMngt( ST25DV_Object_t* pObj, ST25DV_RF_MNGT * const pRF_Mngt )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadRFMngt( ST25DV_RF_MNGT * const pRF_Mngt )
 {
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   uint8_t reg_value = 0;
   
   /* Read actual value of RF_MNGT register */
-  status = st25dv_get_rf_mngt_all(&(pObj->Ctx), &reg_value);
+  status = ST25DV_i2c_ReadRegister( &reg_value, ST25DV_RF_MNGT_REG, 1 );
 
-  if( status == ST25DV_OK )
+  if( status == NFCTAG_OK )
   {
     /* Extract RF Disable information */
     if( (reg_value & ST25DV_RF_MNGT_RFDIS_MASK) == ST25DV_RF_MNGT_RFDIS_MASK )
@@ -1157,33 +1247,32 @@ int32_t ST25DV_ReadRFMngt( ST25DV_Object_t* pObj, ST25DV_RF_MNGT * const pRF_Mng
 /**
   * @brief  Sets the RF Management configuration.
   * @details  Needs the I2C Password presentation to be effective.
-  * @param  pObj the device pObj
   * @param  Rfmngt Value of the RF Management configuration to be written.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_WriteRFMngt( ST25DV_Object_t* pObj, const uint8_t Rfmngt )
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteRFMngt( const uint8_t Rfmngt )
 {
   /* Write RF_MNGT register */
-  return st25dv_set_rf_mngt_all(&(pObj->Ctx), &Rfmngt);
+  return ST25DV_i2c_WriteRegister( &Rfmngt, ST25DV_RF_MNGT_REG, 1 );
 }
 
 /**
   * @brief  Reads the RFDisable register information.
   * @param  pRFDisable Pointer on a ST25DV_EN_STATUS value corresponding to the RF Disable status.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_GetRFDisable( ST25DV_Object_t* pObj, ST25DV_EN_STATUS * const pRFDisable )
+NFCTAG_StatusTypeDef ST25DV_i2c_GetRFDisable( ST25DV_EN_STATUS * const pRFDisable )
 {
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   uint8_t reg_value = 0;
   
   /* Read actual value of RF_MNGT register */
-  status = st25dv_get_rf_mngt_rfdis(&(pObj->Ctx), &reg_value);
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_RF_MNGT_REG, 1 );
   
   /* Extract RFDisable information */
-  if( status == ST25DV_OK )
+  if( status == NFCTAG_OK )
   {
-    if( reg_value )
+    if( (reg_value & ST25DV_RF_MNGT_RFDIS_MASK) == ST25DV_RF_MNGT_RFDIS_MASK )
     {
       *pRFDisable = ST25DV_ENABLE;
     }
@@ -1191,6 +1280,7 @@ int32_t ST25DV_GetRFDisable( ST25DV_Object_t* pObj, ST25DV_EN_STATUS * const pRF
     {
       *pRFDisable = ST25DV_DISABLE;
     }
+    return NFCTAG_OK;
   }
   
   return status;
@@ -1199,50 +1289,68 @@ int32_t ST25DV_GetRFDisable( ST25DV_Object_t* pObj, ST25DV_EN_STATUS * const pRF
 /**
   * @brief  Sets the RF Disable configuration.
   * @details  Needs the I2C Password presentation to be effective.
-  * @param  pObj the device pObj
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_SetRFDisable( ST25DV_Object_t* pObj )
+NFCTAG_StatusTypeDef ST25DV_i2c_SetRFDisable( void )
 {
-  uint8_t reg_value = 1;
+  NFCTAG_StatusTypeDef status;
+  uint8_t reg_value = 0;
   
-  /* Write RF_MNGT register */  
-  return st25dv_set_rf_mngt_rfdis(&(pObj->Ctx), &reg_value);
+  /* Read actual value of RF_RMNGT register */
+  status = ST25DV_i2c_ReadRegister( &reg_value, ST25DV_RF_MNGT_REG, 1 );
+  if( status != NFCTAG_OK )
+  {
+    return status;
+  }
+  
+  /* Update RF Disable field configuration */
+  reg_value |= ST25DV_RF_MNGT_RFDIS_MASK;
+  
+  /* Write RF_MNGT register */
+  return ST25DV_i2c_WriteRegister( &reg_value, ST25DV_RF_MNGT_REG, 1 );
 }
 
 /**
   * @brief  Resets the RF Disable configuration
   * @details  Needs the I2C Password presentation to be effective.
-  * @param  pObj the device pObj
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ResetRFDisable( ST25DV_Object_t* pObj )
+NFCTAG_StatusTypeDef ST25DV_i2c_ResetRFDisable( void )
 {
+  NFCTAG_StatusTypeDef status;
   uint8_t reg_value = 0;
   
-  /* Write RF_MNGT register */  
-  return st25dv_set_rf_mngt_rfdis(&(pObj->Ctx), &reg_value);
+  /* Read actual value of RF_RMNGT register */
+  status = ST25DV_i2c_ReadRegister( &reg_value, ST25DV_RF_MNGT_REG, 1 );
+  if( status != NFCTAG_OK )
+  {
+    return status;
+  }
+  
+  /* Update RF Disable field configuration */
+  reg_value &= ST25DV_RF_MNGT_RFDIS_FIELD;
+  
+  /* Write RF_MNGT register */
+  return ST25DV_i2c_WriteRegister( &reg_value, ST25DV_RF_MNGT_REG, 1 );
 }
 
 /**
   * @brief  Reads the RFSleep register information.
-  * @param  pObj the device pObj
   * @param  pRFSleep Pointer on a ST25DV_EN_STATUS value corresponding to the RF Sleep status.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_GetRFSleep( ST25DV_Object_t* pObj, ST25DV_EN_STATUS * const pRFSleep )
+NFCTAG_StatusTypeDef ST25DV_i2c_GetRFSleep( ST25DV_EN_STATUS * const pRFSleep )
 {
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   uint8_t reg_value = 0;
   
-  
   /* Read actual value of RF_MNGT register */
-  status = st25dv_get_rf_mngt_rfsleep(&(pObj->Ctx), &reg_value);
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_RF_MNGT_REG, 1 );
   
-  /* Extract RFDisable information */
-  if( status == ST25DV_OK )
+  /* Extract RFSleep information */
+  if( status == NFCTAG_OK )
   {
-    if( reg_value )
+    if( (reg_value & ST25DV_RF_MNGT_RFDIS_MASK) == ST25DV_RF_MNGT_RFDIS_MASK )
     {
       *pRFSleep = ST25DV_ENABLE;
     }
@@ -1250,147 +1358,184 @@ int32_t ST25DV_GetRFSleep( ST25DV_Object_t* pObj, ST25DV_EN_STATUS * const pRFSl
     {
       *pRFSleep = ST25DV_DISABLE;
     }
+    return NFCTAG_OK;
   }
- 
+  
   return status;
 }
 
 /**
   * @brief  Sets the RF Sleep configuration.
   * @details  Needs the I2C Password presentation to be effective.
-  * @param  pObj the device pObj
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_SetRFSleep(ST25DV_Object_t* pObj )
+NFCTAG_StatusTypeDef ST25DV_i2c_SetRFSleep( void )
 {
-  uint8_t reg_value = 1;
+  NFCTAG_StatusTypeDef status;
+  uint8_t reg_value = 0;
   
-  /* Write RF_MNGT register */  
-  return st25dv_set_rf_mngt_rfsleep(&(pObj->Ctx), &reg_value);
+  /* Read actual value of RF_RMNGT register */
+  status = ST25DV_i2c_ReadRegister( &reg_value, ST25DV_RF_MNGT_REG, 1 );
+  if( status != NFCTAG_OK )
+  {
+    return status;
+  }
+  
+  /* Update RF Sleep field configuration */
+  reg_value |= ST25DV_RF_MNGT_RFSLEEP_MASK;
+  
+  /* Write RF_MNGT register */
+  return ST25DV_i2c_WriteRegister( &reg_value, ST25DV_RF_MNGT_REG, 1 );
 }
 
 /**
   * @brief  Resets the RF Sleep configuration.
   * @details  Needs the I2C Password presentation to be effective.
-  * @param  pObj the device pObj
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ResetRFSleep( ST25DV_Object_t* pObj )
+NFCTAG_StatusTypeDef ST25DV_i2c_ResetRFSleep( void )
 {
+  NFCTAG_StatusTypeDef status;
   uint8_t reg_value = 0;
   
-  /* Write RF_MNGT register */  
-  return st25dv_set_rf_mngt_rfsleep(&(pObj->Ctx), &reg_value);
+  /* Read actual value of RF_RMNGT register */
+  status = ST25DV_i2c_ReadRegister( &reg_value, ST25DV_RF_MNGT_REG, 1 );
+  if( status != NFCTAG_OK )
+  {
+    return status;
+  }
+  
+  /* Update RF Sleep field configuration */
+  reg_value &= ST25DV_RF_MNGT_RFSLEEP_FIELD;
+  
+  /* Write RF_MNGT register */
+  return ST25DV_i2c_WriteRegister( &reg_value, ST25DV_RF_MNGT_REG, 1 );
 }
 
 /**
   * @brief  Reads the Mailbox mode.
-  * @param  pObj the device pObj
   * @param  pMB_mode Pointer on a ST25DV_EH_MODE_STATUS value used to return the Mailbox mode.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadMBMode( ST25DV_Object_t* pObj, ST25DV_EN_STATUS * const pMB_mode )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadMBMode( ST25DV_EN_STATUS * const pMB_mode )
 {
   uint8_t reg_value;
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   
   /* Read actual value of MB_MODE register */
-  status = st25dv_get_mb_mode_rw(&(pObj->Ctx), &reg_value);
-  if( status == ST25DV_OK )
+  status = ST25DV_i2c_ReadRegister( &reg_value, ST25DV_MB_MODE_REG, 1 );
+  if( status != NFCTAG_OK )
   {
-    /* Extract Mailbox mode status */
-    if( reg_value  )
-    {
-      *pMB_mode = ST25DV_ENABLE;
-    }
-    else
-    {
-      *pMB_mode = ST25DV_DISABLE;
-    }
+    return status;
   }
-  return status;
+  
+  /* Extract Mailbox mode status */
+  if( (reg_value & ST25DV_MB_MODE_RW_MASK) == ST25DV_MB_MODE_RW_MASK )
+  {
+    *pMB_mode = ST25DV_ENABLE;
+  }
+  else
+  {
+    *pMB_mode = ST25DV_DISABLE;
+  }
+  
+  return NFCTAG_OK;
 }
 
 /**
   * @brief  Sets the Mailbox mode.
   * @details  Needs the I2C Password presentation to be effective.
-  * @param  pObj the device pObj
   * @param  MB_mode ST25DV_EN_STATUS value corresponding to the Mailbox mode to be set.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_WriteMBMode( ST25DV_Object_t* pObj, const ST25DV_EN_STATUS MB_mode )
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteMBMode( const ST25DV_EN_STATUS MB_mode )
 {
   uint8_t reg_value;
-  int32_t status;
+  
   /* Update Mailbox mode status */
   reg_value = (uint8_t)MB_mode;
   
   /* Write MB_MODE register */
-  status = st25dv_set_mb_mode_rw(&(pObj->Ctx), &reg_value);
-
-  return status;
+  return ST25DV_i2c_WriteRegister( &reg_value, ST25DV_MB_MODE_REG, 1 );
 }
 
 /**
   * @brief  Reads the Mailbox watchdog duration coefficient.
-  * @param  pObj the device pObj
   * @param  pWdgDelay Pointer on a uint8_t used to return the watchdog duration coefficient.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadMBWDG( ST25DV_Object_t* pObj, uint8_t * const pWdgDelay )
-{  
-  /* Read actual value of MB_WDG register */  
-  return st25dv_get_mb_wdg_delay(&(pObj->Ctx), pWdgDelay);
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadMBWDG( uint8_t * const pWdgDelay )
+{
+  uint8_t reg_value;
+  NFCTAG_StatusTypeDef status;
+  
+  /* Read actual value of MB_WDG register */
+  status = ST25DV_i2c_ReadRegister( &reg_value, ST25DV_MB_WDG_REG, 1 );
+  if( status != NFCTAG_OK )
+  {
+    return status;
+  }
+  
+  /* Extract watchdog coefficient delay configuration */
+  *pWdgDelay = (reg_value & ST25DV_MB_WDG_DELAY_MASK) >> ST25DV_MB_WDG_DELAY_SHIFT;
+  
+  return NFCTAG_OK;
 }
 
 /**
   * @brief  Writes the Mailbox watchdog coefficient delay
   * @details  Needs the I2C Password presentation to be effective.
-  * @param  pObj the device pObj
   * @param  WdgDelay Watchdog duration coefficient to be written (Watch dog duration = MB_WDG*30 ms +/- 6%).
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_WriteMBWDG( ST25DV_Object_t* pObj, const uint8_t WdgDelay )
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteMBWDG( const uint8_t WdgDelay )
 {
-   /* Write MB_WDG register */
-  return st25dv_set_mb_wdg_delay(&(pObj->Ctx), &WdgDelay);
+  uint8_t reg_value;
+  
+  /* Set Watchdog coefficient delay */
+  reg_value = WdgDelay & ST25DV_MB_WDG_DELAY_MASK;
+  
+  /* Write MB_MODE register */
+  return ST25DV_i2c_WriteRegister( &reg_value, ST25DV_MB_WDG_REG, 1 );
 }
 
 /**
   * @brief  Reads N bytes of data from the Mailbox, starting at the specified byte offset.
-  * @param  pObj the device pObj
   * @param  pData   Pointer on the buffer used to return the read data.
   * @param  Offset  Offset in the Mailbox memory, byte number to start the read.
   * @param  NbByte  Number of bytes to be read.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadMailboxData( ST25DV_Object_t* pObj, uint8_t * const pData, const uint16_t Offset, const uint16_t NbByte )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadMailboxData( uint8_t * const pData, const uint16_t Offset, const uint16_t NbByte )
 {
-  int32_t status = ST25DV_ERROR;
-  if( Offset <= ST25DV_MAX_MAILBOX_LENGTH )
+  if( Offset > ST25DV_MAX_MAILBOX_LENGTH )
   {
-    status =  pObj->IO.Read( ST25DV_ADDR_DATA_I2C, ST25DV_MAILBOX_RAM_REG + Offset, pData,  NbByte );
-  } 
+    return NFCTAG_ERROR;
+  }
+  
   /* Read Data in user memory */
-  return status;
+  return ST25DV_IO_MemRead( pData, ST25DV_ADDR_DATA_I2C, ST25DV_MAILBOX_RAM_REG + Offset, NbByte );
 }
 
 /**
   * @brief  Writes N bytes of data in the Mailbox, starting from first Mailbox Address.
-  * @param  pObj the device pObj
   * @param  pData   Pointer to the buffer containing the data to be written.
   * @param  NbByte  Number of bytes to be written.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_WriteMailboxData( ST25DV_Object_t* pObj, const uint8_t * const pData, const uint16_t NbByte )
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteMailboxData( const uint8_t * const pData, const uint16_t NbByte )
 { 
-  int32_t status = ST25DV_ERROR;
+  NFCTAG_StatusTypeDef status;
   
   /* ST25DV can write a maximum of 256 bytes in Mailbox */
-  if( NbByte <= ST25DV_MAX_MAILBOX_LENGTH )
+  if( NbByte < ST25DV_MAX_MAILBOX_LENGTH )
   {
     /* Write NbByte data in memory */
-    status =  pObj->IO.Write( ST25DV_ADDR_DATA_I2C, ST25DV_MAILBOX_RAM_REG, pData,  NbByte );
+    status = ST25DV_IO_MemWrite( pData, ST25DV_ADDR_DATA_I2C, ST25DV_MAILBOX_RAM_REG, NbByte);
+  }
+  else
+  {
+    status = NFCTAG_ERROR;
   }
   
   return status;
@@ -1398,75 +1543,83 @@ int32_t ST25DV_WriteMailboxData( ST25DV_Object_t* pObj, const uint8_t * const pD
 
 /**
   * @brief  Reads N bytes from the mailbox registers, starting at the specified I2C address.
-  * @param  pObj the device pObj
   * @param  pData   Pointer on the buffer used to return the data.
   * @param  TarAddr I2C memory address to be read.
   * @param  NbByte  Number of bytes to be read.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadMailboxRegister( ST25DV_Object_t* pObj, uint8_t * const pData, const uint16_t TarAddr, const uint16_t NbByte )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadMailboxRegister( uint8_t * const pData, const uint16_t TarAddr, const uint16_t NbByte )
 { 
-  int32_t status = ST25DV_ERROR;
-  if( (TarAddr >= ST25DV_GPO_DYN_REG) && (TarAddr <= ST25DV_MBLEN_DYN_REG) )
+  if( (TarAddr < ST25DV_GPO_DYN_REG) || (TarAddr > ST25DV_MBLEN_DYN_REG) )
   {
-    status =  pObj->IO.Read( ST25DV_ADDR_DATA_I2C, TarAddr,pData,  NbByte);
+    return NFCTAG_ERROR;
   }
   
-  return status;
+  return ST25DV_IO_MemRead( pData, ST25DV_ADDR_DATA_I2C, TarAddr, NbByte );
 }
 
 /**
   * @brief  Writes N bytes to the specified mailbox register.
-  * @param  pObj the device pObj
   * @param  pData   Pointer on the data to be written.
   * @param  TarAddr I2C register address to be written.
   * @param  NbByte  Number of bytes to be written.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_WriteMailboxRegister( ST25DV_Object_t* pObj, const uint8_t * const pData, const uint16_t TarAddr, const uint16_t NbByte )
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteMailboxRegister( const uint8_t * const pData, const uint16_t TarAddr, const uint16_t NbByte )
 { 
-  int32_t status = ST25DV_ERROR;
-  if( (TarAddr >= ST25DV_GPO_DYN_REG) && (TarAddr <= ST25DV_MBLEN_DYN_REG) )
+  NFCTAG_StatusTypeDef status;
+  
+  if( (TarAddr < ST25DV_GPO_DYN_REG) || (TarAddr > ST25DV_MBLEN_DYN_REG) )
   {
-    status =   pObj->IO.Write( ST25DV_ADDR_DATA_I2C, TarAddr,pData,  NbByte);
+    return NFCTAG_ERROR;
   }
   
-  /* Write NbByte data in memory */
+  /* ST25DV can write a maximum of 256 bytes in Mailbox */
+  if( NbByte < ST25DV_MAX_MAILBOX_LENGTH )
+  {
+    /* Write NbByte data in memory */
+    status = ST25DV_IO_MemWrite( pData, ST25DV_ADDR_DATA_I2C, TarAddr, NbByte);
+  }
+  else
+  {
+    status = NFCTAG_ERROR;
+  }
+  
   return status;
 }
 
 /**
   * @brief  Reads the status of the security session open register.
-  * @param  pObj the device pObj
   * @param  pSession Pointer on a ST25DV_I2CSSO_STATUS value used to return the session status.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadI2CSecuritySession_Dyn( ST25DV_Object_t* pObj, ST25DV_I2CSSO_STATUS * const pSession )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadI2CSecuritySession_Dyn( ST25DV_I2CSSO_STATUS * const pSession )
 {
   uint8_t reg_value;
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
 
   /* Read actual value of I2C_SSO_DYN register */
-  status = st25dv_get_i2c_sso_dyn_i2csso(&(pObj->Ctx), &reg_value);
-  if( status == ST25DV_OK )
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_I2C_SSO_DYN_REG, 1 );
+  if( status != NFCTAG_OK )
   {
-  
-    /* Extract Open session information */
-    if( reg_value )
-    {
-      *pSession = ST25DV_SESSION_OPEN;
-    }
-    else
-    {
-      *pSession = ST25DV_SESSION_CLOSED;
-    }
+    return status;
   }
-  return status;
+  
+  /* Extract Open session information */
+  if( (reg_value & ST25DV_I2C_SSO_DYN_I2CSSO_MASK) == ST25DV_I2C_SSO_DYN_I2CSSO_MASK )
+  {
+    *pSession = ST25DV_SESSION_OPEN;
+  }
+  else
+  {
+    *pSession = ST25DV_SESSION_CLOSED;
+  }
+  
+  return NFCTAG_OK;
 }
 
 /**
   * @brief  Reads the IT status register from the ST25DV.
-  * @param  pObj the device pObj
   * @param  pITStatus Pointer on uint8_t, used to return the IT status, such as:
   *                       - RFUSERSTATE = 0x01
   *                       - RFBUSY = 0x02
@@ -1477,97 +1630,117 @@ int32_t ST25DV_ReadI2CSecuritySession_Dyn( ST25DV_Object_t* pObj, ST25DV_I2CSSO_
   *                       - RFGETMSG = 0x40
   *                       - RFWRITE = 0x80
   *
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadITSTStatus_Dyn( ST25DV_Object_t* pObj, uint8_t * const pITStatus )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadITSTStatus_Dyn( uint8_t * const pITStatus )
 {
   /* Read value of ITStatus register */
-  return st25dv_get_itsts_dyn_all(&(pObj->Ctx), pITStatus );
+  return ST25DV_i2c_ReadMailboxRegister( pITStatus, ST25DV_ITSTS_DYN_REG, 1 );
 }
 
 /**
   * @brief  Read value of dynamic GPO register configuration.
-  * @param  pObj the device pObj
   * @param  pGPO ST25DV_GPO pointer of the dynamic GPO configuration to store.
-  * @retval Component error status.
+  * @retval NFCTAG enum status.
   */
-int32_t ST25DV_ReadGPO_Dyn( ST25DV_Object_t* pObj, uint8_t *GPOConfig )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadGPO_Dyn( uint8_t *GPOConfig )
 {
   /* Read actual value of ST25DV_GPO_DYN_REG register */
-  return st25dv_get_gpo_dyn_all(&(pObj->Ctx), GPOConfig);
+  return ST25DV_i2c_ReadMailboxRegister( GPOConfig, ST25DV_GPO_DYN_REG, 1 );
 }
 
 /**
   * @brief  Get dynamique GPO enable status
-  * @param  pObj the device pObj
   * @param  pGPO_en ST25DV_EN_STATUS pointer of the GPO enable status to store
-  * @retval Component error status.
+  * @retval NFCTAG enum status
   */
-int32_t ST25DV_GetGPO_en_Dyn( ST25DV_Object_t* pObj, ST25DV_EN_STATUS * const pGPO_en )
+NFCTAG_StatusTypeDef ST25DV_i2c_GetGPO_en_Dyn( ST25DV_EN_STATUS * const pGPO_en )
 {
   uint8_t reg_value;
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   
   /* Read actual value of GPO_DYN register */
-  status = st25dv_get_gpo_dyn_enable(&(pObj->Ctx), &reg_value);
-  if( status == ST25DV_OK )
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_GPO_DYN_REG, 1 );
+  if( status != NFCTAG_OK )
   {
-    /* Extract GPO enable status information */
-    if( reg_value )
-    {
-      *pGPO_en = ST25DV_ENABLE;
-    }
-    else
-    {
-      *pGPO_en = ST25DV_DISABLE;
-    }
+    return status;
   }
-  return status;
+  
+  /* Extract GPO enable status information */
+  if( (reg_value & ST25DV_GPO_DYN_ENABLE_MASK) == ST25DV_GPO_DYN_ENABLE_MASK )
+  {
+    *pGPO_en = ST25DV_ENABLE;
+  }
+  else
+  {
+    *pGPO_en = ST25DV_DISABLE;
+  }
+  
+  return NFCTAG_OK;
 }
 
 /**
   * @brief  Set dynamique GPO enable configuration.
-  * @param  pObj the device pObj
   * @param  None No parameters.
-  * @retval Component error status.
+  * @retval NFCTAG enum status.
   */
-int32_t ST25DV_SetGPO_en_Dyn( ST25DV_Object_t* pObj )
+NFCTAG_StatusTypeDef ST25DV_i2c_SetGPO_en_Dyn( void )
 {
-  uint8_t reg_value = 1;
+  uint8_t reg_value;
+  NFCTAG_StatusTypeDef status;
+  
+  /* Read actual value of GPO_DYN register */
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_GPO_DYN_REG, 1 );
+  if( status != NFCTAG_OK )
+  {
+    return status;
+  }
+  
+  /* Update GPO enable configuration */
+  reg_value |= ST25DV_GPO_DYN_ENABLE_MASK;
   
   /* Write GPO_DYN Register */
-  return st25dv_set_gpo_dyn_enable(&(pObj->Ctx), &reg_value);
+  return ST25DV_i2c_WriteMailboxRegister( &reg_value, ST25DV_GPO_DYN_REG, 1 );
 }
 
 /**
   * @brief  Reset dynamique GPO enable configuration.
-  * @param  pObj the device pObj
   * @param  None No parameters.
-  * @retval Component error status.
+  * @retval NFCTAG enum status.
   */
-int32_t ST25DV_ResetGPO_en_Dyn( ST25DV_Object_t* pObj )
+NFCTAG_StatusTypeDef ST25DV_i2c_ResetGPO_en_Dyn( void )
 {
-  uint8_t reg_value = 0;
+  uint8_t reg_value;
+  NFCTAG_StatusTypeDef status;
+  
+  /* Read actual value of GPO_DYN register */
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_GPO_DYN_REG, 1 );
+  if( status != NFCTAG_OK )
+  {
+    return status;
+  }
+  
+  /* Update GPO enable configuration */
+  reg_value &= ST25DV_GPO_DYN_ENABLE_FIELD;
   
   /* Write GPO_DYN Register */
-  return st25dv_set_gpo_dyn_enable(&(pObj->Ctx), &reg_value);
+  return ST25DV_i2c_WriteMailboxRegister( &reg_value, ST25DV_GPO_DYN_REG, 1 );
 }
 
 /**
   * @brief  Read value of dynamic EH Ctrl register configuration
-  * @param  pObj the device pObj
   * @param  pEH_CTRL : ST25DV_EH_CTRL pointer of the dynamic EH Ctrl configuration to store
-  * @retval Component error status.
+  * @retval NFCTAG enum status
   */
-int32_t ST25DV_ReadEHCtrl_Dyn( ST25DV_Object_t* pObj, ST25DV_EH_CTRL * const pEH_CTRL )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadEHCtrl_Dyn( ST25DV_EH_CTRL * const pEH_CTRL )
 {
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   uint8_t reg_value = 0;
   
   /* Read actual value of ST25DV_EH_CTRL_DYN_REG register */
-  status = st25dv_get_eh_ctrl_dyn_all(&(pObj->Ctx), &reg_value);
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_EH_CTRL_DYN_REG, 1 );
   
-  if( status == ST25DV_OK )
+  if( status == NFCTAG_OK )
   {
     /* Extract EH EN Mode configuration */
     if( (reg_value & ST25DV_EH_CTRL_DYN_EH_EN_MASK) == ST25DV_EH_CTRL_DYN_EH_EN_MASK )
@@ -1608,6 +1781,8 @@ int32_t ST25DV_ReadEHCtrl_Dyn( ST25DV_Object_t* pObj, ST25DV_EH_CTRL * const pEH
     {
       pEH_CTRL->VCC_on = ST25DV_DISABLE;
     }
+    
+    return NFCTAG_OK;
   }
   
   return status;
@@ -1615,77 +1790,97 @@ int32_t ST25DV_ReadEHCtrl_Dyn( ST25DV_Object_t* pObj, ST25DV_EH_CTRL * const pEH
 
 /**
   * @brief  Reads the Energy Harvesting dynamic status.
-  * @param  pObj the device pObj
   * @param  pEH_Val Pointer on a ST25DV_EN_STATUS value used to return the Energy Harvesting dynamic status.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_GetEHENMode_Dyn( ST25DV_Object_t* pObj, ST25DV_EN_STATUS * const pEH_Val )
+NFCTAG_StatusTypeDef ST25DV_i2c_GetEHENMode_Dyn( ST25DV_EN_STATUS * const pEH_Val )
 {
   uint8_t reg_value;
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   
   /* Read actual value of EH_CTRL_DYN register */
-  status = st25dv_get_eh_ctrl_dyn_eh_en(&(pObj->Ctx), &reg_value);
-  if( status == ST25DV_OK )
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_EH_CTRL_DYN_REG, 1 );
+  if( status != NFCTAG_OK )
   {
-  
-    /* Extract Energy Harvesting status information */
-    if( reg_value )
-    {
-      *pEH_Val = ST25DV_ENABLE;
-    }
-    else
-    {
-      *pEH_Val = ST25DV_DISABLE;
-    }
+    return status;
   }
-  return status;
+  
+  /* Extract Energy Harvesting status information */
+  if( (reg_value & ST25DV_EH_CTRL_DYN_EH_EN_MASK) == ST25DV_EH_CTRL_DYN_EH_EN_MASK )
+  {
+    *pEH_Val = ST25DV_ENABLE;
+  }
+  else
+  {
+    *pEH_Val = ST25DV_DISABLE;
+  }
+  
+  return NFCTAG_OK;
 }
 
 /**
   * @brief  Dynamically sets the Energy Harvesting mode.
-  * @param  pObj the device pObj
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_SetEHENMode_Dyn( ST25DV_Object_t* pObj )
+NFCTAG_StatusTypeDef ST25DV_i2c_SetEHENMode_Dyn( void )
 {
-  uint8_t reg_value = 1;
+  uint8_t reg_value;
+  NFCTAG_StatusTypeDef status;
+  
+  /* Read actual value of EH_CTRL_DYN register */
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_EH_CTRL_DYN_REG, 1 );
+  if( status != NFCTAG_OK )
+  {
+    return status;
+  }
+  
+  /* Update Energy Harvesting configuration */
+  reg_value |= ST25DV_EH_CTRL_DYN_EH_EN_MASK;
   
   /* Write EH_CTRL_DYN Register */
-  return st25dv_set_eh_ctrl_dyn_eh_en(&(pObj->Ctx), &reg_value);
+  return ST25DV_i2c_WriteMailboxRegister( &reg_value, ST25DV_EH_CTRL_DYN_REG, 1 );
 }
 
 /**
   * @brief  Dynamically unsets the Energy Harvesting mode.
-  * @param  pObj the device pObj
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ResetEHENMode_Dyn( ST25DV_Object_t* pObj )
+NFCTAG_StatusTypeDef ST25DV_i2c_ResetEHENMode_Dyn( void )
 {
-  uint8_t reg_value = 0;
+  uint8_t reg_value;
+  NFCTAG_StatusTypeDef status;
+  
+  /* Read actual value of EH_CTRL_DYN register */
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_EH_CTRL_DYN_REG, 1 );
+  if( status != NFCTAG_OK )
+  {
+    return status;
+  }
+  
+  /* Update Energy Harvesting configuration */
+  reg_value &= ST25DV_EH_CTRL_DYN_EH_EN_FIELD;
   
   /* Write EH_CTRL_DYN Register */
-  return st25dv_set_eh_ctrl_dyn_eh_en(&(pObj->Ctx), &reg_value);
+  return ST25DV_i2c_WriteMailboxRegister( &reg_value, ST25DV_EH_CTRL_DYN_REG, 1 );
 }
 
 /**
   * @brief  Reads the EH_ON status from the EH_CTRL_DYN register.
-  * @param  pObj the device pObj
   * @param  pEHON Pointer on a ST25DV_EN_STATUS value used to return the EHON status.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_GetEHON_Dyn( ST25DV_Object_t* pObj, ST25DV_EN_STATUS * const pEHON )
+NFCTAG_StatusTypeDef ST25DV_i2c_GetEHON_Dyn( ST25DV_EN_STATUS * const pEHON )
 {
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   uint8_t reg_value = 0;
   
   /* Read actual value of EH_CTRL_DYN register */
-  status = st25dv_get_eh_ctrl_dyn_eh_on(&(pObj->Ctx), &reg_value);
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_EH_CTRL_DYN_REG, 1 );
   
   /* Extract RF Field information */
-  if( status == ST25DV_OK )
+  if( status == NFCTAG_OK )
   {
-    if( reg_value )
+    if( (reg_value & ST25DV_EH_CTRL_DYN_EH_ON_MASK) == ST25DV_EH_CTRL_DYN_EH_ON_MASK )
     {
       *pEHON = ST25DV_ENABLE;
     }
@@ -1693,6 +1888,7 @@ int32_t ST25DV_GetEHON_Dyn( ST25DV_Object_t* pObj, ST25DV_EN_STATUS * const pEHO
     {
       *pEHON = ST25DV_DISABLE;
     }
+    return NFCTAG_OK;
   }
   
   return status;
@@ -1700,22 +1896,21 @@ int32_t ST25DV_GetEHON_Dyn( ST25DV_Object_t* pObj, ST25DV_EN_STATUS * const pEHO
 
 /**
   * @brief  Checks if RF Field is present in front of the ST25DV.
-  * @param  pObj the device pObj
   * @param  pRF_Field Pointer on a ST25DV_FIELD_STATUS value used to return the field presence.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_GetRFField_Dyn( ST25DV_Object_t* pObj, ST25DV_FIELD_STATUS * const pRF_Field )
+NFCTAG_StatusTypeDef ST25DV_i2c_GetRFField_Dyn( ST25DV_FIELD_STATUS * const pRF_Field )
 {
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   uint8_t reg_value = 0;
   
   /* Read actual value of EH_CTRL_DYN register */
-  status = st25dv_get_eh_ctrl_dyn_field_on(&(pObj->Ctx), &reg_value );
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_EH_CTRL_DYN_REG, 1 );
   
   /* Extract RF Field information */
-  if( status == ST25DV_OK )
+  if( status == NFCTAG_OK )
   {
-    if( reg_value )
+    if( (reg_value & ST25DV_EH_CTRL_DYN_FIELD_ON_MASK) == ST25DV_EH_CTRL_DYN_FIELD_ON_MASK )
     {
       *pRF_Field = ST25DV_FIELD_ON;
     }
@@ -1723,6 +1918,7 @@ int32_t ST25DV_GetRFField_Dyn( ST25DV_Object_t* pObj, ST25DV_FIELD_STATUS * cons
     {
       *pRF_Field = ST25DV_FIELD_OFF;
     }
+    return NFCTAG_OK;
   }
   
   return status;
@@ -1730,22 +1926,21 @@ int32_t ST25DV_GetRFField_Dyn( ST25DV_Object_t* pObj, ST25DV_FIELD_STATUS * cons
 
 /**
   * @brief  Check if VCC is supplying the ST25DV.
-  * @param  pObj the device pObj
   * @param  pVCC ST25DV_VCC_STATUS pointer of the VCC status to store
-  * @retval Component error status.
+  * @retval NFCTAG enum status.
   */
-int32_t ST25DV_GetVCC_Dyn( ST25DV_Object_t* pObj, ST25DV_VCC_STATUS * const pVCC )
+NFCTAG_StatusTypeDef ST25DV_i2c_GetVCC_Dyn( ST25DV_VCC_STATUS * const pVCC )
 {
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   uint8_t reg_value = 0;
   
   /* Read actual value of EH_CTRL_DYN register */
-  status = st25dv_get_eh_ctrl_dyn_vcc_on(&(pObj->Ctx), &reg_value );
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_EH_CTRL_DYN_REG, 1 );
   
   /* Extract VCC information */
-  if( status == ST25DV_OK )
+  if( status == NFCTAG_OK )
   {
-    if( reg_value )
+    if( (reg_value & ST25DV_EH_CTRL_DYN_VCC_ON_MASK) == ST25DV_EH_CTRL_DYN_VCC_ON_MASK )
     {
       *pVCC = ST25DV_VCC_ON;
     }
@@ -1753,6 +1948,7 @@ int32_t ST25DV_GetVCC_Dyn( ST25DV_Object_t* pObj, ST25DV_VCC_STATUS * const pVCC
     {
       *pVCC = ST25DV_VCC_OFF;
     }
+    return NFCTAG_OK;
   }
   
   return status;
@@ -1760,19 +1956,18 @@ int32_t ST25DV_GetVCC_Dyn( ST25DV_Object_t* pObj, ST25DV_VCC_STATUS * const pVCC
 
 /**
   * @brief  Read value of dynamic RF Management configuration
-  * @param  pObj the device pObj
   * @param  pRF_Mngt : ST25DV_RF_MNGT pointer of the dynamic RF Management configuration to store
-  * @retval Component error status.
+  * @retval NFCTAG enum status
   */
-int32_t ST25DV_ReadRFMngt_Dyn( ST25DV_Object_t* pObj, ST25DV_RF_MNGT * const pRF_Mngt )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadRFMngt_Dyn( ST25DV_RF_MNGT * const pRF_Mngt )
 {
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   uint8_t reg_value = 0;
   
   /* Read actual value of RF_MNGT_DYN register */
-  status = st25dv_get_rf_mngt_dyn_all(&(pObj->Ctx), &reg_value);
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_RF_MNGT_DYN_REG, 1 );
   
-  if( status == ST25DV_OK )
+  if( status == NFCTAG_OK )
   {
     /* Extract RF Disable configuration */
     if( (reg_value & ST25DV_RF_MNGT_DYN_RFDIS_MASK) == ST25DV_RF_MNGT_DYN_RFDIS_MASK )
@@ -1793,6 +1988,8 @@ int32_t ST25DV_ReadRFMngt_Dyn( ST25DV_Object_t* pObj, ST25DV_RF_MNGT * const pRF
     {
       pRF_Mngt->RfSleep = ST25DV_DISABLE;
     }
+    
+    return NFCTAG_OK;
   }
   
   return status;
@@ -1800,34 +1997,32 @@ int32_t ST25DV_ReadRFMngt_Dyn( ST25DV_Object_t* pObj, ST25DV_RF_MNGT * const pRF
 
 /**
   * @brief  Writes a value to the RF Management dynamic register.
-  * @param  pObj the device pObj
   * @param  RF_Mngt Value to be written to the RF Management dynamic register.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_WriteRFMngt_Dyn( ST25DV_Object_t* pObj, const uint8_t RF_Mngt )
+NFCTAG_StatusTypeDef ST25DV_i2c_WriteRFMngt_Dyn( const uint8_t RF_Mngt )
 {
   /* Write value to RF_MNGT_DYN register */
-  return st25dv_set_rf_mngt_dyn_all(&(pObj->Ctx), &RF_Mngt);
+  return ST25DV_i2c_WriteMailboxRegister( &RF_Mngt, ST25DV_RF_MNGT_DYN_REG, 1 );
 }
 
 /**
   * @brief  Reads the RFDisable dynamic register information.
-  * @param  pObj the device pObj
   * @param  pRFDisable Pointer on a ST25DV_EN_STATUS value used to return the RF Disable state.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_GetRFDisable_Dyn( ST25DV_Object_t* pObj, ST25DV_EN_STATUS * const pRFDisable )
+NFCTAG_StatusTypeDef ST25DV_i2c_GetRFDisable_Dyn( ST25DV_EN_STATUS * const pRFDisable )
 {
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   uint8_t reg_value = 0;
   
   /* Read actual value of RF_MNGT_DYN register */
-  status = st25dv_get_rf_mngt_dyn_rfdis(&(pObj->Ctx), &reg_value);
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_RF_MNGT_DYN_REG, 1 );
   
   /* Extract RFDisable information */
-  if( status == ST25DV_OK )
+  if( status == NFCTAG_OK )
   {
-    if( reg_value )
+    if( (reg_value & ST25DV_RF_MNGT_DYN_RFDIS_MASK) == ST25DV_RF_MNGT_DYN_RFDIS_MASK )
     {
       *pRFDisable = ST25DV_ENABLE;
     }
@@ -1835,6 +2030,7 @@ int32_t ST25DV_GetRFDisable_Dyn( ST25DV_Object_t* pObj, ST25DV_EN_STATUS * const
     {
       *pRFDisable = ST25DV_DISABLE;
     }
+    return NFCTAG_OK;
   }
   
   return status;
@@ -1842,46 +2038,67 @@ int32_t ST25DV_GetRFDisable_Dyn( ST25DV_Object_t* pObj, ST25DV_EN_STATUS * const
 
 /**
   * @brief  Sets the RF Disable dynamic configuration.
-  * @param  pObj the device pObj
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_SetRFDisable_Dyn( ST25DV_Object_t* pObj )
+NFCTAG_StatusTypeDef ST25DV_i2c_SetRFDisable_Dyn( void )
 {
-  uint8_t reg_value = 1;
+  NFCTAG_StatusTypeDef status;
+  uint8_t reg_value = 0;
   
-  return st25dv_set_rf_mngt_dyn_rfdis(&(pObj->Ctx), &reg_value);
+  /* Read actual value of RF_MNGT_DYN register */
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_RF_MNGT_DYN_REG, 1 );
+  if( status != NFCTAG_OK )
+  {
+    return status;
+  }
+  
+  /* Update dynamic RF Disable field */
+  reg_value |= ST25DV_RF_MNGT_DYN_RFDIS_MASK;
+  
+  /* Write RF_MNGT_DYN register */
+  return ST25DV_i2c_WriteMailboxRegister( &reg_value, ST25DV_RF_MNGT_DYN_REG, 1 );
 }
 
 /**
   * @brief  Unsets the RF Disable dynamic configuration.
-  * @param  pObj the device pObj
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ResetRFDisable_Dyn( ST25DV_Object_t* pObj )
+NFCTAG_StatusTypeDef ST25DV_i2c_ResetRFDisable_Dyn( void )
 {
+  NFCTAG_StatusTypeDef status;
   uint8_t reg_value = 0;
   
-  return st25dv_set_rf_mngt_dyn_rfdis(&(pObj->Ctx), &reg_value);
+  /* Read actual value of RF_MNGT_DYN register */
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_RF_MNGT_DYN_REG, 1 );
+  if( status != NFCTAG_OK )
+  {
+    return status;
+  }
+  
+  /* Update dynamic RF Disable field configuration */
+  reg_value &= ST25DV_RF_MNGT_DYN_RFDIS_FIELD;
+  
+  /* Write RF_MNGT_DYN register */
+  return ST25DV_i2c_WriteMailboxRegister( &reg_value, ST25DV_RF_MNGT_DYN_REG, 1 );
 }
 
 /**
   * @brief  Reads the RFSleep dynamic register information.
-  * @param  pObj the device pObj
   * @param  pRFSleep Pointer on a ST25DV_EN_STATUS values used to return the RF Sleep state.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_GetRFSleep_Dyn( ST25DV_Object_t* pObj, ST25DV_EN_STATUS * const pRFSleep )
+NFCTAG_StatusTypeDef ST25DV_i2c_GetRFSleep_Dyn( ST25DV_EN_STATUS * const pRFSleep )
 {
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   uint8_t reg_value = 0;
   
   /* Read actual value of RF_MNGT_DYN register */
-  status = st25dv_get_rf_mngt_dyn_rfsleep(&(pObj->Ctx), &reg_value);
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_RF_MNGT_DYN_REG, 1 );
   
   /* Extract RFSleep information */
-  if( status == ST25DV_OK )
+  if( status == NFCTAG_OK )
   {
-    if( reg_value )
+    if( (reg_value & ST25DV_RF_MNGT_DYN_RFDIS_MASK) == ST25DV_RF_MNGT_DYN_RFDIS_MASK )
     {
       *pRFSleep = ST25DV_ENABLE;
     }
@@ -1889,6 +2106,7 @@ int32_t ST25DV_GetRFSleep_Dyn( ST25DV_Object_t* pObj, ST25DV_EN_STATUS * const p
     {
       *pRFSleep = ST25DV_DISABLE;
     }
+    return NFCTAG_OK;
   }
   
   return status;
@@ -1896,159 +2114,145 @@ int32_t ST25DV_GetRFSleep_Dyn( ST25DV_Object_t* pObj, ST25DV_EN_STATUS * const p
 
 /**
   * @brief  Sets the RF Sleep dynamic configuration.
-  * @param  pObj the device pObj
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_SetRFSleep_Dyn( ST25DV_Object_t* pObj )
+NFCTAG_StatusTypeDef ST25DV_i2c_SetRFSleep_Dyn( void )
 {
-  uint8_t reg_value = 1;
+  NFCTAG_StatusTypeDef status;
+  uint8_t reg_value = 0;
   
-  return st25dv_set_rf_mngt_dyn_rfsleep(&(pObj->Ctx), &reg_value);
+  /* Read actual value of RF_MNGT_DYN register */
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_RF_MNGT_DYN_REG, 1 );
+  if( status != NFCTAG_OK )
+  {
+    return status;
+  }
+  
+  /* Update dynamic RF Disable field configuration */
+  reg_value |= ST25DV_RF_MNGT_DYN_RFSLEEP_MASK;
+  
+  /* Write RF_MNGT_DYN register */
+  return ST25DV_i2c_WriteMailboxRegister( &reg_value, ST25DV_RF_MNGT_DYN_REG, 1 );
 }
 
 /**
   * @brief  Unsets the RF Sleep dynamic configuration.
-  * @param  pObj the device pObj
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ResetRFSleep_Dyn( ST25DV_Object_t* pObj )
+NFCTAG_StatusTypeDef ST25DV_i2c_ResetRFSleep_Dyn( void )
 {
+  NFCTAG_StatusTypeDef status;
   uint8_t reg_value = 0;
   
-  return st25dv_set_rf_mngt_dyn_rfsleep(&(pObj->Ctx), &reg_value);
+  /* Read actual value of RF_MNGT_DYN register */
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_RF_MNGT_DYN_REG, 1 );
+  if( status != NFCTAG_OK )
+  {
+    return status;
+  }
+  
+  /* Update dynamic RF Disable field configuration */
+  reg_value &= ST25DV_RF_MNGT_DYN_RFSLEEP_FIELD;
+  
+  /* Write RF_MNGT_DYN register */
+  return ST25DV_i2c_WriteMailboxRegister( &reg_value, ST25DV_RF_MNGT_DYN_REG, 1 );
 }
 
 /**
   * @brief  Reads the Mailbox ctrl dynamic register.
-  * @param  pObj the device pObj
   * @param  pCtrlStatus Pointer on a ST25DV_MB_CTRL_DYN_STATUS structure used to return the dynamic Mailbox ctrl information.
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadMBCtrl_Dyn( ST25DV_Object_t* pObj, ST25DV_MB_CTRL_DYN_STATUS * const pCtrlStatus )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadMBCtrl_Dyn( ST25DV_MB_CTRL_DYN_STATUS * const pCtrlStatus )
 {
   uint8_t reg_value;
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   
   /* Read MB_CTRL_DYN register */
-  status = st25dv_get_mb_ctrl_dyn_all(&(pObj->Ctx), &reg_value);
-  if( status == ST25DV_OK )
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_MB_CTRL_DYN_REG, 1 );
+  if( status != NFCTAG_OK )
   {
-    /* Extract Mailbox ctrl information */
-    pCtrlStatus->MbEnable = (reg_value & ST25DV_MB_CTRL_DYN_MBEN_MASK) >> ST25DV_MB_CTRL_DYN_MBEN_SHIFT;
-    pCtrlStatus->HostPutMsg = (reg_value & ST25DV_MB_CTRL_DYN_HOSTPUTMSG_MASK) >> ST25DV_MB_CTRL_DYN_HOSTPUTMSG_SHIFT;
-    pCtrlStatus->RfPutMsg = (reg_value & ST25DV_MB_CTRL_DYN_RFPUTMSG_MASK) >> ST25DV_MB_CTRL_DYN_RFPUTMSG_SHIFT;
-    pCtrlStatus->HostMissMsg = (reg_value & ST25DV_MB_CTRL_DYN_HOSTMISSMSG_MASK) >> ST25DV_MB_CTRL_DYN_HOSTMISSMSG_SHIFT;
-    pCtrlStatus->RFMissMsg = (reg_value & ST25DV_MB_CTRL_DYN_RFMISSMSG_MASK) >> ST25DV_MB_CTRL_DYN_RFMISSMSG_SHIFT;
-    pCtrlStatus->CurrentMsg = (ST25DV_CURRENT_MSG)((reg_value & ST25DV_MB_CTRL_DYN_CURRENTMSG_MASK) >> ST25DV_MB_CTRL_DYN_CURRENTMSG_SHIFT);
+    return status;
   }
-  return status;
+  
+  /* Extract Mailbox ctrl information */
+  pCtrlStatus->MbEnable = (reg_value & ST25DV_MB_CTRL_DYN_MBEN_MASK) >> ST25DV_MB_CTRL_DYN_MBEN_SHIFT;
+  pCtrlStatus->HostPutMsg = (reg_value & ST25DV_MB_CTRL_DYN_HOSTPUTMSG_MASK) >> ST25DV_MB_CTRL_DYN_HOSTPUTMSG_SHIFT;
+  pCtrlStatus->RfPutMsg = (reg_value & ST25DV_MB_CTRL_DYN_RFPUTMSG_MASK) >> ST25DV_MB_CTRL_DYN_RFPUTMSG_SHIFT;
+  pCtrlStatus->HostMissMsg = (reg_value & ST25DV_MB_CTRL_DYN_HOSTMISSMSG_MASK) >> ST25DV_MB_CTRL_DYN_HOSTMISSMSG_SHIFT;
+  pCtrlStatus->RFMissMsg = (reg_value & ST25DV_MB_CTRL_DYN_RFMISSMSG_MASK) >> ST25DV_MB_CTRL_DYN_RFMISSMSG_SHIFT;
+  pCtrlStatus->CurrentMsg = (ST25DV_CURRENT_MSG)((reg_value & ST25DV_MB_CTRL_DYN_CURRENTMSG_MASK) >> ST25DV_MB_CTRL_DYN_CURRENTMSG_SHIFT);
+  
+  return NFCTAG_OK;
 }
 
 /**
   * @brief  Reads the Mailbox Enable dynamic configuration.
-  * @param  pObj the device pObj
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_GetMBEN_Dyn( ST25DV_Object_t* pObj, ST25DV_EN_STATUS * const pMBEN )
+NFCTAG_StatusTypeDef ST25DV_i2c_GetMBEN_Dyn( ST25DV_EN_STATUS * const pMBEN )
 {
   uint8_t reg_value;
-  int32_t status;
+  NFCTAG_StatusTypeDef status;
   
   /* Read MB_CTRL_DYN register */
-  status = st25dv_get_mb_ctrl_dyn_mben( &(pObj->Ctx),&reg_value );
-  if( status == ST25DV_OK )
+  status = ST25DV_i2c_ReadMailboxRegister( &reg_value, ST25DV_MB_CTRL_DYN_REG, 1 );
+  if( status != NFCTAG_OK )
   {
-    if( reg_value )
-    {
-      *pMBEN = ST25DV_ENABLE;
-    }
-    else
-    {
-      *pMBEN = ST25DV_DISABLE;
-    }
+    return status;
   }
-  return status;
+  
+  if( (reg_value & ST25DV_MB_MODE_RW_MASK ) == ST25DV_MB_MODE_RW_MASK )
+  {
+    *pMBEN = ST25DV_ENABLE;
+  }
+  else
+  {
+    *pMBEN = ST25DV_DISABLE;
+  }
+  
+  return NFCTAG_OK;
 }
 
 /**
   * @brief  Sets the Mailbox Enable dynamic configuration.
-  * @param  pObj the device pObj
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_SetMBEN_Dyn( ST25DV_Object_t* pObj )
+NFCTAG_StatusTypeDef ST25DV_i2c_SetMBEN_Dyn( void )
 {
-  uint8_t reg_value = 1;
-    
+  uint8_t reg_value;
+  
+  /* Set dynamic Mailbox enable */
+  reg_value = ST25DV_MB_CTRL_DYN_MBEN_MASK;
+  
   /* Write MB_CTRL_DYN register */
-  return st25dv_set_mb_ctrl_dyn_mben( &(pObj->Ctx),&reg_value );
+  return ST25DV_i2c_WriteMailboxRegister( &reg_value, ST25DV_MB_CTRL_DYN_REG, 1 );
 }
 
 /**
   * @brief  Unsets the Mailbox Enable dynamic configuration.
-  * @param  pObj the device pObj
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ResetMBEN_Dyn( ST25DV_Object_t* pObj )
+NFCTAG_StatusTypeDef ST25DV_i2c_ResetMBEN_Dyn( void )
 {
-  uint8_t reg_value = 0;
-    
+  uint8_t reg_value;
+  
+  /* Set dynamic Mailbox disable */
+  reg_value = 0;
+  
   /* Write MB_CTRL_DYN register */
-  return st25dv_set_mb_ctrl_dyn_mben( &(pObj->Ctx),&reg_value );
+  return ST25DV_i2c_WriteMailboxRegister( &reg_value, ST25DV_MB_CTRL_DYN_REG, 1 );
 }
 
 /**
   * @brief  Reads the Mailbox message length dynamic register.
   * @param  pMBLength Pointer on a uint8_t used to return the Mailbox message length.
-  * @param  pObj the device pObj
-  * @retval Component error status.
+  * @return NFCTAG_StatusTypeDef enum status.
   */
-int32_t ST25DV_ReadMBLength_Dyn( ST25DV_Object_t* pObj, uint8_t * const pMBLength )
+NFCTAG_StatusTypeDef ST25DV_i2c_ReadMBLength_Dyn( uint8_t * const pMBLength )
 {
   /* Read actual value of MBLEN_DYN register */
-  return st25dv_get_mblen_dyn_mblen( &(pObj->Ctx),pMBLength );
-}
-
-static int32_t ReadRegWrap(void *handle, uint16_t Reg, uint8_t* pData, uint16_t len)
-{
-  int32_t status;
-  ST25DV_Object_t *pObj = (ST25DV_Object_t *)handle;
-  if(Reg & (ST25DV_IS_DYNAMIC_REGISTER))
-  {
-    status = pObj->IO.Read(ST25DV_ADDR_DATA_I2C, Reg, pData, len);
-  } else {
-    status = pObj->IO.Read(ST25DV_ADDR_SYST_I2C, Reg, pData, len);
-  }
-  return status;
-}
-
-static int32_t WriteRegWrap(void *handle, uint16_t Reg, const uint8_t* pData, uint16_t len)
-{
-  int32_t ret;
-  ST25DV_Object_t *pObj = (ST25DV_Object_t *)handle;
-  if(Reg & (ST25DV_IS_DYNAMIC_REGISTER))
-  {
-    ret = pObj->IO.Write(ST25DV_ADDR_DATA_I2C, Reg, pData, len);
-  } else {
-    ret = pObj->IO.Write(ST25DV_ADDR_SYST_I2C, Reg, pData, len);
-    if( ret == ST25DV_OK )
-    {
-      int32_t pollstatus;
-      /* Poll until EEPROM is available */
-      uint32_t tickstart = pObj->IO.GetTick();
-      /* Wait until ST25DV is ready or timeout occurs */
-      do
-      {
-        pollstatus = pObj->IO.IsReady( ST25DV_ADDR_SYST_I2C, 1 );
-      } while( ( (uint32_t)((int32_t)pObj->IO.GetTick() - (int32_t)tickstart) < ST25DV_WRITE_TIMEOUT) && (pollstatus != ST25DV_OK) );
-    
-      if( pollstatus != ST25DV_OK )
-      {
-        ret = ST25DV_TIMEOUT;
-      }
-    }
-  }
-
-  return ret;
+  return ST25DV_i2c_ReadMailboxRegister( pMBLength, ST25DV_MBLEN_DYN_REG, 1 );
 }
 
 /**
